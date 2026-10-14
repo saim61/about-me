@@ -1,1 +1,24 @@
+# Secrets
 .env
+
+data/private/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+build/
+dist/
+
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+.claude/settings.local.json

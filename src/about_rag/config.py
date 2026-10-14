@@ -8,6 +8,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
+
 class Settings(BaseSettings):
     """All configuration lives here. Env vars use the ABOUT_RAG_ prefix."""
 
@@ -22,6 +23,7 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
 
     llm_api_key: SecretStr | None = None
+
 
 @lru_cache
 def get_settings() -> Settings:
