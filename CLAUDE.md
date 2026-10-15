@@ -101,6 +101,8 @@ about-me/
 │   ├── about_saeem.md           # authoring file: where Saeem writes everything down
 │   ├── raw/
 │   │   └── about_saeem.pdf      # dataset (public, committed), rendered from the .md
+│   ├── processed/
+│   │   └── about_saeem.md       # docling output: what the chunker reads
 │   └── private/                 # gitignored: local-only sources (e.g. resume)
 ├── prompts/system_prompt.md     # rules + boundaries, sent with every request
 ├── scripts/
@@ -108,10 +110,12 @@ about-me/
 ├── src/about_rag/
 │   ├── __init__.py
 │   ├── config.py                # settings
-│   └── loader.py                # PDF -> Document (pypdf, per-page text)
+│   ├── loader.py                # PDF -> Document (pypdf, per-page text)
+│   └── chunker.py               # markdown -> Chunk list (structural / fixed-size)
 ├── tests/
 │   ├── test_config.py
-│   └── test_loader.py
+│   ├── test_loader.py
+│   └── test_chunker.py
 ├── docs/
 │   ├── PROJECT_PLAN.md
 │   └── learning-notes/
@@ -134,9 +138,9 @@ about-me/
 |---|---|---|
 | 0 | Repo and project setup | ✅ Done (CI, config; lockfile, Python pin, `.gitignore` repaired) |
 | 1a | PDF dataset + pypdf loader | ✅ Done (`make_pdf.py`, `loader.py`, 5 loader tests) |
-| 1b | Layout-aware extraction with docling (PDF -> markdown) | ⏭️ **Next** |
-| 2 | Chunking | Planned |
-| 3 | Embeddings + similarity search from scratch | Planned |
+| 1b | Layout-aware extraction with docling (PDF -> markdown) | ✅ Done (`data/processed/`) |
+| 2 | Chunking | ✅ Code done (`chunker.py`: structural v1 + fixed-size v2, 20 tests) |
+| 3 | Embeddings + similarity search from scratch | ⏭️ **Next** |
 | 4 | Vector database (pgvector) | Planned |
 | 5 | Generation (Gemini) | Planned |
 | 6 | API, guardrails, rate limiting | Planned |

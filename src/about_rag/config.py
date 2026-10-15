@@ -20,6 +20,7 @@ class Settings(BaseSettings):
 
     knowledge_base_path: Path = PROJECT_ROOT / "data" / "about_saeem.md"
     raw_data_dir: Path = PROJECT_ROOT / "data" / "raw"
+    processed_data_dir: Path = PROJECT_ROOT / "data" / "processed"
     system_prompt_path: Path = PROJECT_ROOT / "prompts" / "system_prompt.md"
     log_level: str = "INFO"
 
