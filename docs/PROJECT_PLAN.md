@@ -274,9 +274,13 @@ Free tiers change often; verify current limits before choosing.
 
 ---
 
-## 7. Decisions Still Open
+## 7. Decisions
 
-- LLM provider for generation
+**Made**
+- LLM provider for generation: Google Gemini (free tier)
+- Dataset format: PDFs in `data/raw/`, extracted to text/markdown by the pipeline
+
+**Still open**
 - Embedding model (decided by Phase 7 evaluation)
 - Hosting: Option A or Option B
 - Whether personal projects (Hookline, fxflow, Milan Airbnb EDA) go into the

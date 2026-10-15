@@ -8,6 +8,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "pydantic-settings" },
+    { name = "pypdf" },
 ]
 
 [package.dev-dependencies]
@@ -21,7 +22,10 @@ tools = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "pydantic-settings", specifier = ">=2.3" }]
+requires-dist = [
+    { name = "pydantic-settings", specifier = ">=2.3" },
+    { name = "pypdf", specifier = ">=6.20.1" },
+]
 
 [package.metadata.requires-dev]
 dev = [

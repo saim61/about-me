@@ -205,9 +205,7 @@ pull request #216 was accepted.
 
 ---
 
-## Saeem's Education
-
-### Saeem's University Education
+## Saeem's University Education
 
 Saeem holds a BSc in Computer Science from FAST-NUCES (National University of Computer
 and Emerging Sciences), Islamabad campus.
@@ -217,12 +215,12 @@ from a user's Twitter home feed and alerted users about accounts that were poten
 bullies. During university, Saeem particularly enjoyed the Software for Mobile Devices
 course, where he learned to build native Android apps, as well as mathematics courses.
 
-### Saeem's A Levels
+## Saeem's A Levels
 
 Saeem completed his A Levels in 2013 at Arab Unity School in Dubai, UAE, under the
 Edexcel board. His subjects were Mathematics, Physics, and Chemistry.
 
-### Saeem's O Levels
+## Saeem's O Levels
 
 Saeem completed his O Levels in 2011 at The Westminster School in Dubai, UAE, under the
 Cambridge (CIE) board. His subjects were Mathematics, Physics, Chemistry, Information

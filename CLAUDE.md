@@ -13,10 +13,14 @@ experience, skills, projects, hobbies) using Retrieval-Augmented Generation (RAG
 It has two equally important goals:
 
 1. **Learning.** Saeem is a senior backend engineer (Go, Elixir) moving into Data and AI
-   Engineering. This project is how he learns RAG: chunking, embeddings, similarity
-   search, vector databases, generation, evaluation, and tuning.
+   Engineering. This project is how he learns RAG: document extraction, chunking,
+   embeddings, similarity search, vector databases, generation, evaluation, and tuning.
 2. **Portfolio.** It is a public GitHub repo with a live demo on a free hosting
    platform, so code quality, README, and docs matter.
+
+**Real-world simulation:** the dataset is treated as a set of **PDFs**, the way source
+documents usually arrive in real RAG projects. The pipeline extracts text from those
+PDFs; it does not read the markdown authoring file directly (see section 7).
 
 ---
 
@@ -29,7 +33,8 @@ It has two equally important goals:
   targets a specific location in a file.
 - **Analogies:** Explain new Python/ML concepts with analogies from Go
   (e.g. `pyproject.toml` ≈ `go.mod`, `uv.lock` ≈ `go.sum`, `@lru_cache` singleton ≈
-  `sync.Once`, module-level `re.compile` ≈ package-level `regexp.MustCompile`).
+  `sync.Once`, module-level `re.compile` ≈ package-level `regexp.MustCompile`,
+  `ruff format` ≈ `gofmt`).
 - **Teaching mode:** Explain the concept before the code, and explain the *why* behind
   design decisions. This is a learning project, not just a delivery.
 - **Learning notes are Saeem's homework.** Each phase ends with a short note in
@@ -37,6 +42,8 @@ It has two equally important goals:
   it himself.
 - **Before saying a task is done:** run `uv run ruff check .`,
   `uv run ruff format --check .`, and `uv run pytest`, and report the results.
+- **Formatting:** keep PEP 8 as enforced by `ruff format` (two blank lines between
+  top-level definitions). Saeem chose this so CI stays green; don't hand-edit it away.
 - Saeem may be developing on Windows. Prefer cross-platform commands (`uv run ...`) and
   check before giving Unix-only shell commands.
 
@@ -56,17 +63,30 @@ It has two equally important goals:
 
 ## 4. Tech stack and conventions
 
-- **Python 3.12**, managed with **uv** (`uv sync`, `uv run ...`). `uv.lock` is committed;
-  CI runs `uv sync --locked`.
-- **src layout:** application code lives in `src/about_rag/`, tests in `tests/`.
+- **Python 3.12** (pinned in `.python-version`), managed with **uv** (`uv sync`,
+  `uv run ...`). `uv.lock` is committed; CI runs `uv sync --locked`.
+- **Dependency groups:**
+  - main dependencies: what the app needs at runtime (`pydantic-settings`, `pypdf`).
+  - `dev`: `pytest`, `ruff` (installed by default with `uv sync`).
+  - `tools`: one-off data-prep tools that must not ship with the app (`markdown`,
+    `xhtml2pdf`). Run with `uv run --group tools ...`.
+- **Heavy ML libraries** (e.g. docling, which pulls in PyTorch) stay out of the runtime
+  app. They run as an offline ingestion step, and their output is committed.
+- **src layout:** application code lives in `src/about_rag/`, tests in `tests/`,
+  one-off scripts in `scripts/`.
 - **Build backend:** hatchling with `packages = ["src/about_rag"]`.
 - **Lint/format:** ruff (line length 100; rules E, F, I, B, UP, SIM).
-- **Tests:** pytest. Every new module gets a matching `tests/test_<module>.py`.
+- **Tests:** pytest. Every new module gets a matching `tests/test_<module>.py`. Test
+  PDFs are built with `pypdf.PdfWriter` in `tmp_path`, or use the committed
+  `data/raw/about_saeem.pdf`.
 - **Config:** `src/about_rag/config.py` uses `pydantic-settings`.
   - Env vars use the `ABOUT_RAG_` prefix and can come from a gitignored `.env`.
   - Secrets use `SecretStr` so they never show up in logs or `repr`.
   - Access settings through `get_settings()` (cached singleton).
   - In tests, construct `Settings(_env_file=None)` so a local `.env` can't change results.
+- **LLM:** Google **Gemini** (free tier) for generation. The key goes in
+  `ABOUT_RAG_LLM_API_KEY`. Free-tier limits change often; verify them before relying on
+  a number.
 - **CI:** `.github/workflows/ci.yml` runs ruff check, ruff format check, and pytest on
   every push to `main` and on pull requests.
 
@@ -75,14 +95,20 @@ It has two equally important goals:
 ## 5. Current repo structure
 
 ```
-about-saeem-rag/
+about-me/
 ├── .github/workflows/ci.yml
-├── data/about_saeem.md          # knowledge base (source of truth)
+├── data/
+│   ├── about_saeem.md           # authoring file: where Saeem writes everything down
+│   ├── raw/
+│   │   └── about_saeem.pdf      # dataset (public, committed), rendered from the .md
+│   └── private/                 # gitignored: local-only sources (e.g. resume)
 ├── prompts/system_prompt.md     # rules + boundaries, sent with every request
+├── scripts/
+│   └── make_pdf.py              # renders data/about_saeem.md -> data/raw/about_saeem.pdf
 ├── src/about_rag/
 │   ├── __init__.py
 │   ├── config.py                # settings
-│   └── loader.py                # read markdown, strip HTML comments, warn on TODOs
+│   └── loader.py                # PDF -> Document (pypdf, per-page text)
 ├── tests/
 │   ├── test_config.py
 │   └── test_loader.py
@@ -106,37 +132,47 @@ about-saeem-rag/
 
 | Phase | Topic | Status |
 |---|---|---|
-| 0 | Repo and project setup | ✅ Done (CI, config, 3 tests) |
-| 1 | Knowledge base + loader | ✅ Done (`loader.py`, 6 tests) — 2 data TODOs remain |
-| 2 | Chunking | ⏭️ **Next** |
+| 0 | Repo and project setup | ✅ Done (CI, config; lockfile, Python pin, `.gitignore` repaired) |
+| 1a | PDF dataset + pypdf loader | ✅ Done (`make_pdf.py`, `loader.py`, 5 loader tests) |
+| 1b | Layout-aware extraction with docling (PDF -> markdown) | ⏭️ **Next** |
+| 2 | Chunking | Planned |
 | 3 | Embeddings + similarity search from scratch | Planned |
 | 4 | Vector database (pgvector) | Planned |
-| 5 | Generation | Planned |
+| 5 | Generation (Gemini) | Planned |
 | 6 | API, guardrails, rate limiting | Planned |
 | 7 | Evaluation and tuning | Planned |
 | 8 | Frontend and deployment | Planned |
 | 9 | Optional advanced topics | Planned |
 
-### Open data TODOs in `data/about_saeem.md`
+### What Phase 1a showed
 
-- Start month/year at ILI Digital (currently renders as `**Period:**  – Present` after
-  cleaning).
-- Years attended at FAST-NUCES.
-
-The loader logs a warning while any `<!-- TODO ... -->` comments remain.
+pypdf returns plain text only: headings lose their `##`/`###` identity (one heading
+even wrapped onto two lines), sentences break at the PDF's page width, and bold labels
+like `Period:` become plain text. So pypdf output can't feed the structural chunker
+directly; that is the motivation for Phase 1b.
 
 ### Items for Saeem to confirm
 
+- Years attended at FAST-NUCES (not in the knowledge base yet).
 - Exact university course name: written as "Software for Mobile Devices".
 - New skills added from his repos (dbt, PySpark, Parquet, star schema, SCD2,
   Prometheus, OpenTelemetry): confirm he's comfortable claiming them.
 - Test counts in project descriptions (Hookline: 292 tests, 94% coverage; Podium: 429
   tests) will go stale; update when the repos change.
+- The intro blockquote in `about_saeem.md` ("Knowledge base for the RAG assistant...")
+  also appears in the PDF; decide whether to drop it from the rendered PDF.
 
 ---
 
-## 7. Knowledge base rules (`data/about_saeem.md`)
+## 7. Knowledge base and dataset rules
 
+- **Flow:** edit `data/about_saeem.md` → run
+  `uv run --group tools python scripts/make_pdf.py` → commit the regenerated
+  `data/raw/about_saeem.pdf`. The pipeline only reads `data/raw/`.
+- **docling extraction (offline, pinned):**
+  `uvx --from docling==2.139.0 docling data/raw/about_saeem.pdf --to md --no-ocr --output data/processed`
+  runs docling in an isolated env (like `go run tool@version`), so torch never enters
+  `uv.lock`. First run downloads layout models to the Hugging Face cache.
 - **Third person, always.** Write "Saeem completed...", never "I completed...". Chunks
   without the name retrieve poorly, and the system prompt makes the bot speak in third
   person.
@@ -144,14 +180,18 @@ The loader logs a warning while any `<!-- TODO ... -->` comments remain.
   (e.g. "Saeem's Experience at Dycoders"), because the retriever fetches sections
   individually.
 - **Each project has its own `###` subsection** so it becomes its own chunk.
-- **HTML comments (`<!-- -->`) are notes for humans** and are stripped by the loader.
-  TODOs are written as `<!-- TODO: ... -->`.
+- **HTML comments (`<!-- -->`) are notes for humans.** They don't render in the PDF, so
+  they never reach the pipeline. TODOs are written as `<!-- TODO: ... -->`.
 - Duplicated contact info (Quick Facts + Contact section) is intentional: it helps
   contact questions retrieve well.
 - Client names under NDA must not appear (the Code Graphers client is referred to as
   "a client").
-- The repo is public, so the knowledge base is public on GitHub too. Only content Saeem
-  is comfortable sharing publicly goes in.
+- The repo is public, so everything in `data/raw/` is public on GitHub too. Only content
+  Saeem is comfortable sharing publicly goes in.
+- **`data/private/` is local-only.** It holds Saeem's resume, which names an NDA client
+  and is out of date (e.g. Code Graphers listed as current). Use it only for local
+  experiments (extraction comparisons, conflicting-source tests). The deployed bot must
+  never ingest it.
 
 ---
 
@@ -172,16 +212,32 @@ The loader logs a warning while any `<!-- TODO ... -->` comments remain.
 
 ---
 
-## 9. Next up: Phase 2 — Chunking
+## 9. Next up
 
-Build `src/about_rag/chunker.py` with tests:
+### Phase 1b — Layout-aware extraction with docling
 
-1. **v1 — structural chunking:** split the cleaned `Document` by markdown headings
-   (`##` and `###`). Keep the heading text inside each chunk. For `###` subsections,
-   consider prefixing the parent `##` heading so the chunk keeps its context
+1. Run docling **offline** on `data/raw/*.pdf` to produce markdown in a committed
+   `data/processed/` folder. docling stays out of the runtime dependencies.
+2. Compare docling's markdown with the pypdf output side by side: are `##`/`###`
+   headings, bullets, and bold labels recovered?
+3. Optionally try the private resume locally as a second, differently-laid-out PDF.
+
+**Concepts to teach:** layout analysis, why extraction quality caps retrieval quality,
+offline ingestion vs. runtime dependencies.
+
+**Learning note:** `docs/learning-notes/01-pdf-extraction.md` (Saeem writes it): digital
+vs. scanned PDFs, what pypdf lost, why pages are kept separately, pypdf vs. docling.
+
+### Phase 2 — Chunking (after 1b)
+
+Build `src/about_rag/chunker.py` with tests, working on the extracted markdown:
+
+1. **v1 — structural chunking:** split by markdown headings (`##` and `###`). Keep the
+   heading text inside each chunk. For `###` subsections, consider prefixing the parent
+   `##` heading so the chunk keeps its context
    (e.g. "Saeem's Education > Saeem's A Levels").
 2. Each chunk carries **metadata**: section title (and parent title), source filename,
-   chunk index.
+   page number where available, chunk index.
 3. Drop empty chunks and pure separators (`---`).
 4. **v2 — fixed-size chunking** by token count with overlap, for comparison.
 5. A way to **print all chunks** (e.g. `uv run python -m about_rag.chunker`) so Saeem
@@ -195,11 +251,18 @@ document.
 
 ---
 
-## 10. Decisions still open
+## 10. Decisions
 
-- LLM provider for generation (free-tier options, verify current limits).
+### Made
+
+- **LLM provider: Google Gemini** (free tier, generous usage for a portfolio demo).
+- **Dataset format: PDFs** in `data/raw/`, to simulate real-world ingestion.
+
+### Still open
+
 - Embedding model (decide with Phase 7 evaluation; prefer light ONNX-based options such
-  as fastembed for free hosting with limited RAM).
+  as fastembed for free hosting with limited RAM; Gemini's embedding API is a candidate
+  to compare).
 - Hosting: Hugging Face Spaces vs. Render (+ Neon/Supabase for pgvector), see section 5
   of the plan. An in-memory store is a valid production choice for ~20–30 chunks.
 - Repo license (MIT suggested).

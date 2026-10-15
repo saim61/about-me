@@ -5,6 +5,7 @@ def test_default_paths_point_to_existing_files():
     settings = Settings(_env_file=None)
     assert settings.knowledge_base_path.exists()
     assert settings.system_prompt_path.exists()
+    assert settings.raw_data_dir.is_dir()
 
 
 def test_env_var_overrides_default(monkeypatch):
