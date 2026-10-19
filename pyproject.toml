@@ -5,6 +5,10 @@ description = "A RAG assistant that answers questions about Saeem Mehmood Sadiq"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "fastembed>=0.9.0",
+    "numpy>=2.5.4",
+    "pgvector>=0.5.1",
+    "psycopg[binary]>=3.3.6",
     "pydantic-settings>=2.3",
     "pypdf>=6.20.1",
 ]
@@ -12,6 +16,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pytest>=8.0",
+    "pyyaml>=6.0.3",
     "ruff>=0.6",
 ]
 tools = [
@@ -37,3 +42,7 @@ select = ["E", "F", "I", "B", "UP", "SIM"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "model: runs the real embedding model (downloads it on first run)",
+    "db: needs Postgres from docker-compose.yml (skipped locally when it is not running)",
+]

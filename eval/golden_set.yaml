@@ -1,0 +1,137 @@
+# Golden set: questions with the chunk sections a good retriever should return.
+#
+# Seeded in Phase 3 from Saeem's interactive session with the retriever; grows to 30-50
+# questions in Phase 7, when eval/run_eval.py measures recall@k and MRR against it.
+#
+# Fields:
+#   question:           exactly what a visitor might type (typos and all)
+#   category:           direct | name_variant | pronoun | typo | small_talk | out_of_scope
+#   expect:             answer     -> retrieval should find expected_sections
+#                       refuse     -> off-limits or unknown; the bot must decline (Phase 5-6)
+#                       small_talk -> should not need retrieval at all (Phase 6)
+#   expected_sections:  section titles as the chunker reports them; any one of them in
+#                       the top-k counts as a hit. Empty for refuse / small_talk.
+#
+# Baseline (Phase 3: structural chunks, bge-small-en-v1.5, raw query) is noted as
+# "rank N" in comments, so later changes can be compared against it.
+
+questions:
+  # --- direct: wording close to the headings ---
+  - question: "What does Saeem do for fun?"
+    category: direct
+    expect: answer
+    expected_sections: ["Saeem's Hobbies and Fun Facts"]  # rank 1
+  - question: "Where did Saeem study?"
+    category: direct
+    expect: answer
+    expected_sections:  # Background rank 1, A Levels 2, O Levels 3, University 4
+      - "Saeem's University Education"
+      - "Saeem's A Levels"
+      - "Saeem's O Levels"
+      - "Saeem's Background"
+  - question: "Which university did Saeem attend?"
+    category: direct
+    expect: answer
+    expected_sections: ["Saeem's University Education"]  # rank 1
+  - question: "What did Saeem do at Dycoders?"
+    category: direct
+    expect: answer
+    expected_sections: ["Saeem's Experience at Dycoders (Senior Software Engineer, Hybrid)"]  # rank 1
+  - question: "How can I contact Saeem?"
+    category: direct
+    expect: answer
+    expected_sections: ["How to Contact Saeem", "Quick Facts About Saeem"]  # rank 1
+  - question: "Who is Saeem?"
+    category: direct
+    expect: answer
+    expected_sections: ["Professional Summary of Saeem", "Quick Facts About Saeem"]  # rank 1
+  - question: "What are Saeem's technical skills?"
+    category: direct
+    expect: answer
+    expected_sections: ["Saeem's Technical Skills"]  # rank 1
+  - question: "Saeem's Technical Skills?"
+    category: direct
+    expect: answer
+    expected_sections: ["Saeem's Technical Skills"]  # rank 1
+  - question: "Does Saeem know Kubernetes?"
+    category: direct
+    expect: answer
+    expected_sections: ["Saeem's Technical Skills"]  # rank 1
+  - question: "How did Saeem reduce memory usage?"
+    category: direct
+    expect: answer
+    expected_sections: ["Saeem's Experience at Code Graphers (Senior Software Engineer)"]  # rank 1
+
+  # --- name_variant: "Saeem" without the apostrophe ---
+  - question: "What are Saeem's skills?"
+    category: name_variant
+    expect: answer
+    expected_sections: ["Saeem's Technical Skills"]  # rank 1
+  - question: "What are Saeems skills?"
+    category: name_variant
+    expect: answer
+    expected_sections: ["Saeem's Technical Skills"]  # rank 1, lower score
+  - question: "What are Saeem skills?"
+    category: name_variant
+    expect: answer
+    expected_sections: ["Saeem's Technical Skills"]  # rank 2 (Learning chunk wins)
+
+  # --- pronoun: he / him / his instead of the name ---
+  - question: "What are his skills?"
+    category: pronoun
+    expect: answer
+    expected_sections: ["Saeem's Technical Skills"]  # rank 2
+  - question: "How can I contact him?"
+    category: pronoun
+    expect: answer
+    expected_sections: ["How to Contact Saeem", "Quick Facts About Saeem"]  # rank 1
+  - question: "Who is he?"
+    category: pronoun
+    expect: answer
+    expected_sections: ["Professional Summary of Saeem", "Quick Facts About Saeem"]  # rank 4 (Summary: 6)
+  - question: "Where did he study?"
+    category: pronoun
+    expect: answer
+    expected_sections: ["Saeem's University Education"]  # rank 4
+  - question: "What did he do at Dycoders?"
+    category: pronoun
+    expect: answer
+    expected_sections: ["Saeem's Experience at Dycoders (Senior Software Engineer, Hybrid)"]  # rank 1
+  - question: "What does he do for fun?"
+    category: pronoun
+    expect: answer
+    expected_sections: ["Saeem's Hobbies and Fun Facts"]  # rank 1
+
+  # --- typo: misspellings split into misleading subword tokens ---
+  - question: "What are Saeem's skils?"
+    category: typo
+    expect: answer
+    expected_sections: ["Saeem's Technical Skills"]  # rank 2 ("skils" -> "ski" "##ls" -> Hobbies)
+  - question: "wher did saem studdy?"
+    category: typo
+    expect: answer
+    expected_sections: ["Saeem's University Education"]  # rank 4
+
+  # --- small_talk: should be handled without retrieval ---
+  - question: "hi"
+    category: small_talk
+    expect: small_talk
+    expected_sections: []
+  - question: "how are you?"
+    category: small_talk
+    expect: small_talk
+    expected_sections: []
+
+  # --- out_of_scope: off-limits (CLAUDE.md section 8) or simply not in the knowledge base ---
+  - question: "What is his salary?"
+    category: out_of_scope
+    expect: refuse
+    expected_sections: []
+  - question: "How much does Saeem earn?"
+    category: out_of_scope
+    expect: refuse
+    expected_sections: []
+  - question: "What is Saeem's favourite food?"
+    category: out_of_scope
+    expect: refuse
+    expected_sections: []

@@ -24,6 +24,13 @@ class Settings(BaseSettings):
     system_prompt_path: Path = PROJECT_ROOT / "prompts" / "system_prompt.md"
     log_level: str = "INFO"
 
+    embedding_model: str = "BAAI/bge-small-en-v1.5"
+    model_cache_dir: Path = PROJECT_ROOT / ".cache" / "models"
+    top_k: int = 3
+
+    # Matches docker-compose.yml. Production overrides it with ABOUT_RAG_DATABASE_URL.
+    database_url: SecretStr = SecretStr("postgresql://about_rag:about_rag@localhost:5433/about_rag")
+
     llm_api_key: SecretStr | None = None
 
 

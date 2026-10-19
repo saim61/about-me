@@ -66,8 +66,9 @@ PDFs; it does not read the markdown authoring file directly (see section 7).
 - **Python 3.12** (pinned in `.python-version`), managed with **uv** (`uv sync`,
   `uv run ...`). `uv.lock` is committed; CI runs `uv sync --locked`.
 - **Dependency groups:**
-  - main dependencies: what the app needs at runtime (`pydantic-settings`, `pypdf`).
-  - `dev`: `pytest`, `ruff` (installed by default with `uv sync`).
+  - main dependencies: what the app needs at runtime (`pydantic-settings`, `pypdf`,
+    `fastembed`, `numpy`, `psycopg[binary]`, `pgvector`).
+  - `dev`: `pytest`, `ruff`, `pyyaml` (installed by default with `uv sync`).
   - `tools`: one-off data-prep tools that must not ship with the app (`markdown`,
     `xhtml2pdf`). Run with `uv run --group tools ...`.
 - **Heavy ML libraries** (e.g. docling, which pulls in PyTorch) stay out of the runtime
@@ -79,6 +80,12 @@ PDFs; it does not read the markdown authoring file directly (see section 7).
 - **Tests:** pytest. Every new module gets a matching `tests/test_<module>.py`. Test
   PDFs are built with `pypdf.PdfWriter` in `tmp_path`, or use the committed
   `data/raw/about_saeem.pdf`.
+  - `@pytest.mark.model` tests run the real embedding model; `@pytest.mark.db` tests need
+    Postgres (`docker compose up -d`) and are skipped locally without it, but required
+    in CI (CI starts the same pgvector image as a service). Fast loop:
+    `uv run pytest -m "not model and not db"`.
+- **Postgres:** `docker-compose.yml` runs pgvector on host port **5433** (5432 is taken
+  by a local Postgres on Saeem's machine). Ingest with `uv run python -m about_rag.ingest`.
 - **Config:** `src/about_rag/config.py` uses `pydantic-settings`.
   - Env vars use the `ABOUT_RAG_` prefix and can come from a gitignored `.env`.
   - Secrets use `SecretStr` so they never show up in logs or `repr`.
@@ -111,19 +118,33 @@ about-me/
 │   ├── __init__.py
 │   ├── config.py                # settings
 │   ├── loader.py                # PDF -> Document (pypdf, per-page text)
-│   └── chunker.py               # markdown -> Chunk list (structural / fixed-size)
+│   ├── chunker.py               # markdown -> Chunk list (structural / fixed-size)
+│   ├── embedder.py              # text -> vectors (fastembed, bge-small-en-v1.5, 384 dims)
+│   ├── similarity.py            # hand-written cosine similarity + top-k (NumPy)
+│   ├── store.py                 # VectorStore protocol + in-memory store (NumPy)
+│   ├── pgvector_store.py        # Postgres store: cosine search, content-hash sync
+│   ├── ingest.py                # CLI: processed md -> chunks -> embeddings -> Postgres
+│   └── retriever.py             # question -> top-k chunks; CLI (--store memory|pg)
 ├── tests/
 │   ├── test_config.py
 │   ├── test_loader.py
-│   └── test_chunker.py
+│   ├── test_chunker.py
+│   ├── test_similarity.py
+│   ├── test_store.py
+│   ├── test_embedder.py         # marked `model`: runs the real model
+│   ├── test_retriever.py
+│   ├── test_pgvector_store.py   # marked `db`: needs Postgres
+│   └── test_golden_set.py       # golden set stays in sync with section titles
 ├── docs/
 │   ├── PROJECT_PLAN.md
 │   └── learning-notes/
-├── eval/                        # empty until Phase 7
+├── eval/
+│   └── golden_set.yaml          # questions + expected sections (seeded in Phase 3)
 ├── frontend/                    # empty until Phase 8
 ├── .env.example
 ├── .gitignore
 ├── .python-version
+├── docker-compose.yml           # local Postgres + pgvector (port 5433)
 ├── pyproject.toml
 ├── uv.lock
 ├── CLAUDE.md
@@ -140,8 +161,8 @@ about-me/
 | 1a | PDF dataset + pypdf loader | ✅ Done (`make_pdf.py`, `loader.py`, 5 loader tests) |
 | 1b | Layout-aware extraction with docling (PDF -> markdown) | ✅ Done (`data/processed/`) |
 | 2 | Chunking | ✅ Code done (`chunker.py`: structural v1 + fixed-size v2, 20 tests) |
-| 3 | Embeddings + similarity search from scratch | ⏭️ **Next** |
-| 4 | Vector database (pgvector) | Planned |
+| 3 | Embeddings + similarity search from scratch | ✅ Code done (embedder, similarity, store, retriever; 23 tests) |
+| 4 | Vector database (pgvector) | ✅ Code done (pgvector store, idempotent ingest, 10 db tests; matches NumPy on the golden set) |
 | 5 | Generation (Gemini) | Planned |
 | 6 | API, guardrails, rate limiting | Planned |
 | 7 | Evaluation and tuning | Planned |
@@ -218,40 +239,26 @@ directly; that is the motivation for Phase 1b.
 
 ## 9. Next up
 
-### Phase 1b — Layout-aware extraction with docling
+### Phase 5 — Generation with Gemini
 
-1. Run docling **offline** on `data/raw/*.pdf` to produce markdown in a committed
-   `data/processed/` folder. docling stays out of the runtime dependencies.
-2. Compare docling's markdown with the pypdf output side by side: are `##`/`###`
-   headings, bullets, and bold labels recovered?
-3. Optionally try the private resume locally as a second, differently-laid-out PDF.
+`generator.py`: system prompt + retrieved chunks + question -> Gemini, streamed, with the
+chunks used logged per answer. Verify the current Gemini SDK, model names, and free-tier
+limits before writing code.
 
-**Concepts to teach:** layout analysis, why extraction quality caps retrieval quality,
-offline ingestion vs. runtime dependencies.
+**Known retrieval weaknesses to address here** (measured in Phase 3, recorded with
+baseline ranks in `eval/golden_set.yaml`):
 
-**Learning note:** `docs/learning-notes/01-pdf-extraction.md` (Saeem writes it): digital
-vs. scanned PDFs, what pypdf lost, why pages are kept separately, pypdf vs. docling.
+- Pronouns ("who is he?" rank 4-6), typos ("skils" tokenizes as `ski ##ls` and hits
+  Hobbies), and "Saeem" vs "Saeem's" lower ranks. Planned fix: **LLM query rewriting**
+  before retrieval (also handles follow-ups and Roman Urdu questions).
+- Scores are compressed (~0.45-0.85) and an absolute threshold does not separate
+  relevant from irrelevant (an off-limits salary question scored 0.75). Don't add a
+  score threshold; off-limits questions are handled by the system prompt and guardrails.
+- Keep "Saeem" in every heading: removing it from headings dropped the Skills chunk
+  from rank 1 to 18 for "What are Saeem's skills?" (its body never names him).
 
-### Phase 2 — Chunking (after 1b)
-
-Build `src/about_rag/chunker.py` with tests, working on the extracted markdown:
-
-1. **v1 — structural chunking:** split by markdown headings (`##` and `###`). Keep the
-   heading text inside each chunk. For `###` subsections, consider prefixing the parent
-   `##` heading so the chunk keeps its context
-   (e.g. "Saeem's Education > Saeem's A Levels").
-2. Each chunk carries **metadata**: section title (and parent title), source filename,
-   page number where available, chunk index.
-3. Drop empty chunks and pure separators (`---`).
-4. **v2 — fixed-size chunking** by token count with overlap, for comparison.
-5. A way to **print all chunks** (e.g. `uv run python -m about_rag.chunker`) so Saeem
-   can inspect them by eye.
-
-**Concepts to teach:** chunk, chunk size, overlap, tokens vs. characters, metadata, and
-why structural chunking often beats fixed-size chunking for a small, well-organized
-document.
-
-**Learning note:** `docs/learning-notes/02-chunking.md` (Saeem writes it).
+**Learning notes still to write (Saeem):** `01-pdf-extraction.md`, `02-chunking.md`,
+`03-embeddings.md`, `04-vector-database.md`.
 
 ---
 
@@ -264,9 +271,10 @@ document.
 
 ### Still open
 
-- Embedding model (decide with Phase 7 evaluation; prefer light ONNX-based options such
-  as fastembed for free hosting with limited RAM; Gemini's embedding API is a candidate
-  to compare).
+- Embedding model: the current default is `BAAI/bge-small-en-v1.5` via fastembed
+  (local, ONNX, 384 dims, 512-token limit, model cached in gitignored `.cache/models`).
+  Confirm or replace it with Phase 7 evaluation; Gemini's embedding API and bge's
+  optional query prefix are candidates to compare.
 - Hosting: Hugging Face Spaces vs. Render (+ Neon/Supabase for pgvector), see section 5
   of the plan. An in-memory store is a valid production choice for ~20–30 chunks.
 - Repo license (MIT suggested).
