@@ -7,7 +7,16 @@ from about_rag.chunker import chunk_file
 from about_rag.config import PROJECT_ROOT, Settings
 
 GOLDEN_SET = PROJECT_ROOT / "eval" / "golden_set.yaml"
-CATEGORIES = {"direct", "name_variant", "pronoun", "typo", "small_talk", "out_of_scope"}
+CATEGORIES = {
+    "direct",
+    "timeline",
+    "name_variant",
+    "pronoun",
+    "typo",
+    "roman_urdu",
+    "small_talk",
+    "out_of_scope",
+}
 EXPECTS = {"answer", "refuse", "small_talk"}
 
 

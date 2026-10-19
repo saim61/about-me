@@ -71,6 +71,16 @@ InvoZone was where Saeem started his professional career, working on real-time g
 - Implemented gRPC and GraphQL services to improve modularity and scalability.
 - Owned backend logic for multiple game modules and mentored junior engineers.
 
+## Saeem's Career Timeline
+
+Saeem's jobs in order, from the most recent to his first job:
+
+1. ILI Digital: Senior Software Engineer, April 2026 - Present
+2. Code Graphers: Senior Software Engineer, June 2024 - March 2026
+3. Dycoders: Senior Software Engineer (Hybrid), July 2023 - January 2024
+4. Automatiq: Senior Software Engineer (Contract, Remote), May 2022 - June 2023
+5. InvoZone: Software Engineer (Hybrid), December 2020 - May 2022
+
 ## Saeem's Technical Skills
 
 - Backend languages: Go, Elixir (Phoenix, OTP, LiveView), Python (FastAPI, Django)

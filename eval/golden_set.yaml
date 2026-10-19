@@ -5,7 +5,8 @@
 #
 # Fields:
 #   question:           exactly what a visitor might type (typos and all)
-#   category:           direct | name_variant | pronoun | typo | small_talk | out_of_scope
+#   category:           direct | timeline | name_variant | pronoun | typo | roman_urdu |
+#                       small_talk | out_of_scope
 #   expect:             answer     -> retrieval should find expected_sections
 #                       refuse     -> off-limits or unknown; the bot must decline (Phase 5-6)
 #                       small_talk -> should not need retrieval at all (Phase 6)
@@ -62,6 +63,43 @@ questions:
     expect: answer
     expected_sections: ["Saeem's Experience at Code Graphers (Senior Software Engineer)"]  # rank 1
 
+  # --- timeline: order and duration questions (added with the Career Timeline section) ---
+  - question: "Where did Saeem work before ILI Digital?"
+    category: timeline
+    expect: answer
+    expected_sections:
+      - "Saeem's Career Timeline"
+      - "Saeem's Experience at Code Graphers (Senior Software Engineer)"
+  - question: "What was Saeem's first job?"
+    category: timeline
+    expect: answer
+    expected_sections:
+      - "Saeem's Career Timeline"
+      - "Saeem's Experience at InvoZone (Software Engineer, Hybrid)"
+  - question: "How many years of experience does Saeem have?"
+    category: timeline
+    expect: answer
+    expected_sections:
+      - "Saeem's Career Timeline"
+      - "Quick Facts About Saeem"
+      - "Professional Summary of Saeem"
+
+  # --- roman_urdu: questions in Urdu written with Latin letters ---
+  - question: "Saeem ne kahan se parhai ki?"
+    category: roman_urdu
+    expect: answer
+    expected_sections:
+      - "Saeem's University Education"
+      - "Saeem's A Levels"
+      - "Saeem's O Levels"
+      - "Saeem's Background"
+  - question: "Saeem ki pehli job kahan thi?"
+    category: roman_urdu
+    expect: answer
+    expected_sections:
+      - "Saeem's Career Timeline"
+      - "Saeem's Experience at InvoZone (Software Engineer, Hybrid)"
+
   # --- name_variant: "Saeem" without the apostrophe ---
   - question: "What are Saeem's skills?"
     category: name_variant
@@ -92,7 +130,12 @@ questions:
   - question: "Where did he study?"
     category: pronoun
     expect: answer
-    expected_sections: ["Saeem's University Education"]  # rank 4
+    # same intent as "Where did Saeem study?", so the same sections count (Background rank 1)
+    expected_sections:
+      - "Saeem's University Education"
+      - "Saeem's A Levels"
+      - "Saeem's O Levels"
+      - "Saeem's Background"
   - question: "What did he do at Dycoders?"
     category: pronoun
     expect: answer
@@ -110,7 +153,12 @@ questions:
   - question: "wher did saem studdy?"
     category: typo
     expect: answer
-    expected_sections: ["Saeem's University Education"]  # rank 4
+    # same intent as "Where did Saeem study?" (A Levels rank 1)
+    expected_sections:
+      - "Saeem's University Education"
+      - "Saeem's A Levels"
+      - "Saeem's O Levels"
+      - "Saeem's Background"
 
   # --- small_talk: should be handled without retrieval ---
   - question: "hi"

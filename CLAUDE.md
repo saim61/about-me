@@ -67,7 +67,7 @@ PDFs; it does not read the markdown authoring file directly (see section 7).
   `uv run ...`). `uv.lock` is committed; CI runs `uv sync --locked`.
 - **Dependency groups:**
   - main dependencies: what the app needs at runtime (`pydantic-settings`, `pypdf`,
-    `fastembed`, `numpy`, `psycopg[binary]`, `pgvector`).
+    `fastembed`, `numpy`, `psycopg[binary]`, `pgvector`, `google-genai`).
   - `dev`: `pytest`, `ruff`, `pyyaml` (installed by default with `uv sync`).
   - `tools`: one-off data-prep tools that must not ship with the app (`markdown`,
     `xhtml2pdf`). Run with `uv run --group tools ...`.
@@ -91,9 +91,22 @@ PDFs; it does not read the markdown authoring file directly (see section 7).
   - Secrets use `SecretStr` so they never show up in logs or `repr`.
   - Access settings through `get_settings()` (cached singleton).
   - In tests, construct `Settings(_env_file=None)` so a local `.env` can't change results.
-- **LLM:** Google **Gemini** (free tier) for generation. The key goes in
-  `ABOUT_RAG_LLM_API_KEY`. Free-tier limits change often; verify them before relying on
-  a number.
+- **LLM:** Google **Gemini** (free tier) via the `google-genai` SDK. The key goes in
+  `ABOUT_RAG_LLM_API_KEY` (a dedicated AI Studio project, free tier, no billing).
+  - Models (checked with `client.models.list()` on 2026-10-19): **`gemini-3.5-flash-lite`
+    for both answers and query rewriting**. Saeem chose the lightest, most
+    cost-effective model. `gemini-3.8-flash` works but allows only 20 requests/day; Pro
+    models have no free quota (429).
+  - Free tier observed (from 429 errors, 2026-10-19): flash-lite **15 requests/minute**;
+    `gemini-3.8-flash` only **20 requests/day** (the reason flash-lite was chosen). Since
+    rewrite + answer now share flash-lite's quota, one visitor message costs 2 of its
+    15 requests/minute, so about 7 messages/minute. Occasional
+    503 "high demand" too. The client retries 429/5xx with backoff, but a daily limit
+    can't be retried away. Each visitor message costs 2 calls (rewrite + answer).
+    Limits change; check https://ai.dev/rate-limit.
+  - Answers come in the visitor's language; Roman Urdu questions get Roman Urdu answers
+    (Saeem's decision).
+  - `@pytest.mark.llm` tests hit the real API and are opt-in: `uv run pytest -m llm`.
 - **CI:** `.github/workflows/ci.yml` runs ruff check, ruff format check, and pytest on
   every push to `main` and on pull requests.
 
@@ -124,7 +137,8 @@ about-me/
 │   ├── store.py                 # VectorStore protocol + in-memory store (NumPy)
 │   ├── pgvector_store.py        # Postgres store: cosine search, content-hash sync
 │   ├── ingest.py                # CLI: processed md -> chunks -> embeddings -> Postgres
-│   └── retriever.py             # question -> top-k chunks; CLI (--store memory|pg)
+│   ├── retriever.py             # question -> top-k chunks; CLI (--store memory|pg)
+│   └── generator.py             # rewrite -> retrieve -> Gemini answer (streamed); chat CLI
 ├── tests/
 │   ├── test_config.py
 │   ├── test_loader.py
@@ -134,6 +148,7 @@ about-me/
 │   ├── test_embedder.py         # marked `model`: runs the real model
 │   ├── test_retriever.py
 │   ├── test_pgvector_store.py   # marked `db`: needs Postgres
+│   ├── test_generator.py        # fake Gemini client; `llm` tests opt-in
 │   └── test_golden_set.py       # golden set stays in sync with section titles
 ├── docs/
 │   ├── PROJECT_PLAN.md
@@ -163,7 +178,7 @@ about-me/
 | 2 | Chunking | ✅ Code done (`chunker.py`: structural v1 + fixed-size v2, 20 tests) |
 | 3 | Embeddings + similarity search from scratch | ✅ Code done (embedder, similarity, store, retriever; 23 tests) |
 | 4 | Vector database (pgvector) | ✅ Code done (pgvector store, idempotent ingest, 10 db tests; matches NumPy on the golden set) |
-| 5 | Generation (Gemini) | Planned |
+| 5 | Generation (Gemini) | ✅ Code done (query rewriting + streamed answers; golden-set MRR 0.821 → 0.929 with rewriting) |
 | 6 | API, guardrails, rate limiting | Planned |
 | 7 | Evaluation and tuning | Planned |
 | 8 | Frontend and deployment | Planned |
@@ -239,26 +254,35 @@ directly; that is the motivation for Phase 1b.
 
 ## 9. Next up
 
-### Phase 5 — Generation with Gemini
+### Phase 6 — API, guardrails, abuse protection
 
-`generator.py`: system prompt + retrieved chunks + question -> Gemini, streamed, with the
-chunks used logged per answer. Verify the current Gemini SDK, model names, and free-tier
-limits before writing code.
+FastAPI endpoint around `Generator`, cheap pre-checks in `guardrails.py` (including a
+small-talk route so "hi" skips retrieval), injection tests, and rate limiting sized to
+the Gemini free tier (2 calls per visitor message, 15 RPM per model observed).
 
-**Known retrieval weaknesses to address here** (measured in Phase 3, recorded with
-baseline ranks in `eval/golden_set.yaml`):
+**Lessons so far that constrain the design:**
 
-- Pronouns ("who is he?" rank 4-6), typos ("skils" tokenizes as `ski ##ls` and hits
-  Hobbies), and "Saeem" vs "Saeem's" lower ranks. Planned fix: **LLM query rewriting**
-  before retrieval (also handles follow-ups and Roman Urdu questions).
-- Scores are compressed (~0.45-0.85) and an absolute threshold does not separate
-  relevant from irrelevant (an off-limits salary question scored 0.75). Don't add a
-  score threshold; off-limits questions are handled by the system prompt and guardrails.
-- Keep "Saeem" in every heading: removing it from headings dropped the Skills chunk
-  from rank 1 to 18 for "What are Saeem's skills?" (its body never names him).
+- Query rewriting (Phase 5) fixed pronouns, typos, and name variants: golden-set
+  hit@1 15/21 → 19/21, MRR 0.821 → 0.929. The rewriter must say just "Saeem": with
+  the full name it pulled the meta intro chunk and pushed Technical Skills out of top-3.
+- **Fixed grounding bug:** "and before that?" (after "Where does Saeem work now?")
+  answered Dycoders instead of Code Graphers: the Code Graphers chunk wasn't retrieved
+  and Gemini inferred an order the context never stated. Fixed with a "Saeem's Career
+  Timeline" section (all jobs in order, existing dates only) plus a system-prompt rule
+  against inferring order/dates. Golden set now 26 questions: rewritten hit@3 26/26,
+  MRR 0.936. Lesson: aggregate questions (order, firsts, totals) need a summary chunk.
+- flash-lite as the answer model once called InvoZone a "Senior" role while listing
+  jobs (it was "Software Engineer"): small-model precision is part of the model choice.
+- Scores are compressed (~0.45-0.85); don't add a score threshold. Off-limits
+  questions are handled by the system prompt (salary/marriage/injection verified).
+- Keep "Saeem" in every heading: removing it dropped Technical Skills from rank 1 to 18.
+- **Answer model decided: `gemini-3.5-flash-lite`** (Saeem: "use the lightest model
+  which is most cost effective"). Size Phase 6 rate limiting to its limits: 15
+  requests/minute shared by rewrite + answer; check its daily limit at
+  https://ai.dev/rate-limit. Watch its precision on the golden set in Phase 7.
 
 **Learning notes still to write (Saeem):** `01-pdf-extraction.md`, `02-chunking.md`,
-`03-embeddings.md`, `04-vector-database.md`.
+`03-embeddings.md`, `04-vector-database.md`, `05-generation.md`.
 
 ---
 
