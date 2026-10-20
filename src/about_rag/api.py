@@ -30,6 +30,7 @@ from math import ceil
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from google.genai import errors
 from pydantic import BaseModel, Field
 
@@ -137,6 +138,9 @@ def create_app(generator: Generator | None = None, settings: Settings | None = N
             yield line({"type": "done"})
 
         return StreamingResponse(events(), media_type=NDJSON)
+
+    if settings.frontend_dir.is_dir():
+        app.mount("/", StaticFiles(directory=settings.frontend_dir, html=True), name="frontend")
 
     return app
 

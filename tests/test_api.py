@@ -44,6 +44,13 @@ def test_health():
     assert client.get("/health").json() == {"status": "ok"}
 
 
+def test_frontend_is_served_at_the_root():
+    client, _ = make_client()
+    response = client.get("/")
+    assert response.status_code == 200
+    assert "<title>Ask about Saeem</title>" in response.text
+
+
 def test_ask_streams_sources_then_text_then_done():
     client, _ = make_client()
     response = client.post("/ask", json={"question": "What does he do for fun?"})

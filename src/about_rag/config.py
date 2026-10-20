@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     history_turns: int = 3
 
     store: str = "memory"
+    frontend_dir: Path = PROJECT_ROOT / "frontend"
     cors_origins: list[str] = []
     max_question_chars: int = 500
     ip_requests_per_minute: int = 5

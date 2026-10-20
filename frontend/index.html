@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ask about Saeem</title>
+  <meta name="description" content="A small RAG assistant that answers questions about Saeem Mehmood Sadiq.">
+  <style>
+    :root {
+      --bg: #fafaf9;
+      --surface: #ffffff;
+      --text: #1c1917;
+      --muted: #78716c;
+      --border: #e7e5e4;
+      --accent: #0f766e;
+      --accent-text: #ffffff;
+      --user-bubble: #0f766e;
+      --bot-bubble: #f5f5f4;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1c1917;
+        --surface: #292524;
+        --text: #f5f5f4;
+        --muted: #a8a29e;
+        --border: #44403c;
+        --accent: #2dd4bf;
+        --accent-text: #134e4a;
+        --user-bubble: #115e59;
+        --bot-bubble: #292524;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+    main {
+      max-width: 720px;
+      min-height: 100dvh;
+      margin: 0 auto;
+      padding: 32px 16px 16px;
+      display: flex;
+      flex-direction: column;
+    }
+    header h1 { margin: 0; font-size: 1.6rem; letter-spacing: -0.01em; }
+    header p { margin: 4px 0 0; color: var(--muted); }
+    #chat { flex: 1; padding: 24px 0; display: flex; flex-direction: column; gap: 12px; }
+    .msg { max-width: 85%; padding: 10px 14px; border-radius: 14px; overflow-wrap: anywhere; }
+    .msg p { margin: 0 0 8px; }
+    .msg p:last-child, .msg ul:last-child { margin-bottom: 0; }
+    .msg ul { margin: 0 0 8px; padding-left: 20px; }
+    .msg a { color: inherit; }
+    .user { align-self: flex-end; background: var(--user-bubble); color: #fff; border-bottom-right-radius: 4px; }
+    .bot { align-self: flex-start; background: var(--bot-bubble); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+    .error { color: #b91c1c; }
+    .typing::after { content: "▍"; animation: blink 1s steps(2) infinite; }
+    @keyframes blink { to { opacity: 0; } }
+    #starters { display: flex; flex-wrap: wrap; gap: 8px; }
+    #starters button {
+      font: inherit; font-size: 0.9rem; cursor: pointer;
+      padding: 6px 12px; border-radius: 999px;
+      background: var(--surface); color: var(--text); border: 1px solid var(--border);
+    }
+    #starters button:hover { border-color: var(--accent); }
+    form { display: flex; gap: 8px; padding-top: 12px; position: sticky; bottom: 0; background: var(--bg); padding-bottom: 8px; }
+    input {
+      flex: 1; min-width: 0; font: inherit; padding: 12px 14px;
+      border-radius: 12px; border: 1px solid var(--border);
+      background: var(--surface); color: var(--text);
+    }
+    input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+    form button {
+      font: inherit; font-weight: 600; cursor: pointer;
+      padding: 0 18px; border: 0; border-radius: 12px;
+      background: var(--accent); color: var(--accent-text);
+    }
+    form button:disabled { opacity: 0.5; cursor: default; }
+    footer { color: var(--muted); font-size: 0.8rem; text-align: center; padding-top: 8px; }
+    footer a { color: inherit; }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Ask about Saeem</h1>
+      <p>A small RAG assistant that answers questions about Saeem Mehmood Sadiq's work, projects, and background.</p>
+    </header>
+
+    <section id="chat" aria-live="polite">
+      <div id="starters">
+        <button type="button">Who is Saeem?</button>
+        <button type="button">What are his skills?</button>
+        <button type="button">Tell me about his projects</button>
+        <button type="button">Where did he study?</button>
+        <button type="button">How can I contact him?</button>
+      </div>
+    </section>
+
+    <form id="ask">
+      <input id="question" name="question" autocomplete="off" maxlength="500"
+             placeholder="Ask a question about Saeem…" aria-label="Your question" required>
+      <button type="submit">Ask</button>
+    </form>
+
+    <footer>
+      Answers come only from what Saeem has shared publicly. Questions are processed by Google Gemini.
+      · <a href="https://github.com/saim61/about-me">Source</a>
+    </footer>
+  </main>
+
+  <script>
+    const chat = document.getElementById("chat");
+    const form = document.getElementById("ask");
+    const input = document.getElementById("question");
+    const button = form.querySelector("button");
+    const starters = document.getElementById("starters");
+    const history = [];
+
+    function escapeHtml(text) {
+      return text.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+    }
+
+    function inline(text) {
+      return escapeHtml(text)
+        .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+        .replace(/`([^`]+)`/g, "<code>$1</code>")
+        .replace(/(https?:\/\/[^\s<)]*[^\s<).,!?;:])/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
+    }
+
+    function render(markdown) {
+      const html = [];
+      let list = false;
+      for (const line of markdown.split("\n")) {
+        const item = line.match(/^\s*[-*]\s+(.*)/);
+        if (item) {
+          if (!list) { html.push("<ul>"); list = true; }
+          html.push(`<li>${inline(item[1])}</li>`);
+          continue;
+        }
+        if (list) { html.push("</ul>"); list = false; }
+        if (line.trim()) html.push(`<p>${inline(line)}</p>`);
+      }
+      if (list) html.push("</ul>");
+      return html.join("");
+    }
+
+    function bubble(role, text = "") {
+      const el = document.createElement("div");
+      el.className = `msg ${role}`;
+      el.innerHTML = render(text);
+      chat.appendChild(el);
+      el.scrollIntoView({ behavior: "smooth", block: "end" });
+      return el;
+    }
+
+    async function ask(question) {
+      starters.remove();
+      bubble("user", question);
+      const reply = bubble("bot");
+      reply.classList.add("typing");
+      button.disabled = true;
+      let answer = "";
+
+      try {
+        const response = await fetch("/ask", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question, history: history.slice(-3) }),
+        });
+        if (!response.ok) {
+          const body = await response.json().catch(() => ({}));
+          throw new Error(typeof body.detail === "string" ? body.detail : "Something went wrong. Please try again.");
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        for (;;) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop();
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            const event = JSON.parse(line);
+            if (event.type === "text") {
+              answer += event.text;
+              reply.innerHTML = render(answer);
+              reply.scrollIntoView({ block: "end" });
+            } else if (event.type === "error") {
+              throw new Error(event.message);
+            }
+          }
+        }
+        history.push({ question, answer });
+      } catch (error) {
+        reply.innerHTML = `<p class="error">${escapeHtml(error.message)}</p>`;
+      } finally {
+        reply.classList.remove("typing");
+        button.disabled = false;
+        input.focus();
+      }
+    }
+
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const question = input.value.trim();
+      if (!question || button.disabled) return;
+      input.value = "";
+      ask(question);
+    });
+
+    starters.addEventListener("click", (event) => {
+      if (event.target.tagName === "BUTTON" && !button.disabled) ask(event.target.textContent);
+    });
+  </script>
+</body>
+</html>

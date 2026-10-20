@@ -165,7 +165,10 @@ about-me/
 │   ├── golden_set.yaml          # 49 questions + expected sections / must_include facts
 │   ├── run_eval.py              # retrieval experiments + answer checks (LLM judge), cached
 │   └── results.md               # latest results table (written by run_eval.py)
-├── frontend/                    # empty until Phase 8
+├── frontend/
+│   └── index.html               # single-page chat UI, served by api.py at "/"
+├── Dockerfile                   # API + frontend; bakes the embedding model into the image
+├── .dockerignore
 ├── .env.example
 ├── .gitignore
 ├── .python-version
@@ -191,7 +194,7 @@ about-me/
 | 5 | Generation (Gemini) | ✅ Code done (query rewriting + streamed answers; golden-set MRR 0.821 → 0.929 with rewriting) |
 | 6 | API, guardrails, rate limiting | ✅ Code done (FastAPI NDJSON stream, regex pre-checks, per-IP + global limiter; scripted safety run all declined, burst → 429) |
 | 7 | Evaluation and tuning | ✅ Done (`eval/run_eval.py`, 49-question golden set, `eval/results.md`: structural + bge-small + rewrite + k=3 → hit@3 100%, MRR 0.940; answers 49/49) |
-| 8 | Frontend and deployment | Planned |
+| 8 | Frontend and deployment | 🟡 In progress (frontend + Dockerfile done and verified locally; hosting not chosen yet) |
 | 9 | Optional advanced topics | Planned |
 
 ### What Phase 1a showed
@@ -272,6 +275,17 @@ origin, uvicorn with `--proxy-headers` behind the host's proxy.
 
 **From Saeem:** the frontend must be **simple and elegant, not complex**: one static
 page, a clean chat box, a few starter questions. No framework unless clearly needed.
+
+**Done:** `frontend/index.html` (vanilla JS, NDJSON streaming, history of 3 turns,
+light/dark, escaped tiny markdown renderer) served by FastAPI at `/` (same origin, no
+CORS needed). `Dockerfile` (python:3.12-slim + uv, model baked in, non-root user,
+`PORT` env, `--proxy-headers`) verified locally: health, page, and a streamed answer.
+Measured: **~460 MiB RAM idle**, image 1.51 GB.
+
+**Hosting (open, checked 2026-10-20 via third-party sources, verify on the official pages):**
+Render free has 512 MB RAM (too close to 460 MiB), 0.1 CPU, sleeps after 15 min.
+Hugging Face Spaces CPU basic has 2 vCPU / 16 GB RAM and sleeps after 48 h idle, but
+reports conflict on whether free accounts can still create Docker Spaces.
 
 **Phase 7 results (see `eval/results.md`, rerun with `uv run python eval/run_eval.py --answers`):**
 
