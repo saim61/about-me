@@ -139,6 +139,7 @@ about-me/
 │   ├── ingest.py                # CLI: processed md -> chunks -> embeddings -> Postgres
 │   ├── retriever.py             # question -> top-k chunks; CLI (--store memory|pg)
 │   ├── generator.py             # rewrite -> retrieve -> Gemini answer (streamed); chat CLI
+│   ├── evaluation.py            # hit@k, MRR, chunk-to-section matching by text span
 │   ├── guardrails.py            # cheap regex pre-checks before any LLM call
 │   ├── ratelimit.py             # hand-written sliding-window rate limiter
 │   └── api.py                   # FastAPI: POST /ask (NDJSON stream), GET /health
@@ -152,6 +153,7 @@ about-me/
 │   ├── test_retriever.py
 │   ├── test_pgvector_store.py   # marked `db`: needs Postgres
 │   ├── test_generator.py        # fake Gemini client; `llm` tests opt-in
+│   ├── test_evaluation.py
 │   ├── test_guardrails.py
 │   ├── test_ratelimit.py        # fake clock, no sleeping
 │   ├── test_api.py              # TestClient + fake generator
@@ -160,7 +162,9 @@ about-me/
 │   ├── PROJECT_PLAN.md
 │   └── learning-notes/
 ├── eval/
-│   └── golden_set.yaml          # questions + expected sections (seeded in Phase 3)
+│   ├── golden_set.yaml          # 49 questions + expected sections / must_include facts
+│   ├── run_eval.py              # retrieval experiments + answer checks (LLM judge), cached
+│   └── results.md               # latest results table (written by run_eval.py)
 ├── frontend/                    # empty until Phase 8
 ├── .env.example
 ├── .gitignore
@@ -186,7 +190,7 @@ about-me/
 | 4 | Vector database (pgvector) | ✅ Code done (pgvector store, idempotent ingest, 10 db tests; matches NumPy on the golden set) |
 | 5 | Generation (Gemini) | ✅ Code done (query rewriting + streamed answers; golden-set MRR 0.821 → 0.929 with rewriting) |
 | 6 | API, guardrails, rate limiting | ✅ Code done (FastAPI NDJSON stream, regex pre-checks, per-IP + global limiter; scripted safety run all declined, burst → 429) |
-| 7 | Evaluation and tuning | Planned |
+| 7 | Evaluation and tuning | ✅ Done (`eval/run_eval.py`, 49-question golden set, `eval/results.md`: structural + bge-small + rewrite + k=3 → hit@3 100%, MRR 0.940; answers 49/49) |
 | 8 | Frontend and deployment | Planned |
 | 9 | Optional advanced topics | Planned |
 
@@ -260,13 +264,29 @@ directly; that is the motivation for Phase 1b.
 
 ## 9. Next up
 
-### Phase 7 — Evaluation and tuning
+### Phase 8 — Frontend and deployment
 
-Build `eval/run_eval.py` on `eval/golden_set.yaml` (grow it to 30-50 questions):
-recall@k and MRR for retrieval, plus answer checks (refusals for `refuse`, facts for
-`answer`). Then run the experiments the plan lists: structural vs fixed chunking, k=3
-vs k=5, bge-small vs another embedding model, rewriting on/off. Mind the free tier
-(15 requests/minute): pace LLM calls, and cache rewrites/answers between runs.
+`frontend/index.html` calling `POST /ask` (NDJSON stream), a Dockerfile for the API,
+deploy to a free host, secrets in the platform dashboard, CORS set to the frontend's
+origin, uvicorn with `--proxy-headers` behind the host's proxy.
+
+**From Saeem:** the frontend must be **simple and elegant, not complex**: one static
+page, a clean chat box, a few starter questions. No framework unless clearly needed.
+
+**Phase 7 results (see `eval/results.md`, rerun with `uv run python eval/run_eval.py --answers`):**
+
+- Chosen config, justified by numbers: structural chunks + bge-small + query rewriting
+  + k=3 → hit@1 89%, hit@3 100%, MRR 0.940. Fixed-size chunks: hit@1 56-69%.
+  bge-base (3× larger) was worse (hit@1 56-67%). k=5 adds nothing over k=3.
+- A "projects summary" paragraph in the projects section fixed the last retrieval miss
+  (open-source question: rank 14 → 1): same lesson as the timeline, aggregate
+  questions need a summary chunk. Renaming headings alone only reached rank 7.
+- Answers: 49/49 after fixes. The LLM judge (same model) passed a wrong answer once;
+  specific `must_include` facts caught it. Always read some answers yourself.
+- Fixed along the way: English questions sometimes answered in Roman Urdu (system
+  prompt language rule tightened); the eval answer cache now keys on the system prompt.
+- Known: the NDA-client refusal still says "Based on the provided context" (1/45
+  answers); no information leaks.
 
 **Phase 6 results to keep in mind:**
 

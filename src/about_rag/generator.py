@@ -102,8 +102,11 @@ class Generator:
         self.system_prompt = system_prompt
         self.settings = settings or get_settings()
 
-    def rewrite(self, question: str, history: Sequence[Turn] = ()) -> str:
-        """A standalone search query for `question`; the question itself if rewriting fails."""
+    def rewrite(self, question: str, history: Sequence[Turn] = (), *, strict: bool = False) -> str:
+        """A standalone search query for `question`; the question itself if rewriting fails.
+
+        With `strict`, API errors are raised instead (evaluation must not record a fallback).
+        """
         recent = history[-self.settings.history_turns :]
         conversation = "".join(f"Visitor: {t.question}\nBot: {t.answer}\n" for t in recent)
         try:
@@ -117,6 +120,8 @@ class Generator:
                 ),
             )
         except errors.APIError as error:
+            if strict:
+                raise
             log.warning("query rewrite failed (%s); using the question as-is", error)
             return question
         return (response.text or "").strip().strip('"') or question

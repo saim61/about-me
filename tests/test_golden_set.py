@@ -16,6 +16,8 @@ CATEGORIES = {
     "roman_urdu",
     "small_talk",
     "out_of_scope",
+    "injection",
+    "commitment",
 }
 EXPECTS = {"answer", "refuse", "small_talk"}
 
@@ -27,7 +29,8 @@ def questions() -> list[dict]:
 
 def test_every_entry_has_valid_fields(questions):
     for q in questions:
-        assert set(q) == {"question", "category", "expect", "expected_sections"}, q
+        required = {"question", "category", "expect", "expected_sections"}
+        assert required <= set(q) <= required | {"must_include"}, q
         assert q["question"].strip(), q
         assert q["category"] in CATEGORIES, q
         assert q["expect"] in EXPECTS, q

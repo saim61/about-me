@@ -97,6 +97,8 @@ Saeem's jobs in order, from the most recent to his first job:
 
 All of Saeem's personal projects are public on his GitHub: https://www.github.com/saim61
 
+Saeem's projects are Hookline (a webhook delivery service in Python), Podium (a real-time leaderboard system in Go), fxflow (a foreign exchange rates ETL pipeline), the Olist Analytics Platform (an e-commerce data warehouse), and a Go messaging app. His open-source contribution is a bug fix in the ColorHash algorithm of the Python imagehash library (pull request #216, accepted).
+
 ## Hookline - Webhook Delivery Service (Python)
 
 Hookline is Saeem's reliable webhook delivery service, a smaller, readable implementation of what products like Svix and Hookdeck offer. It accepts an event in milliseconds and then delivers it to customers' HTTP endpoints with retries, exponential backoff with jitter, per-endpoint circuit breakers, HMAC signatures, idempotency keys, a dead letter queue, and a permanent audit trail of every delivery attempt. The delivery worker uses a transactional outbox drained with SELECT ... FOR UPDATE SKIP LOCKED, so multiple workers can run concurrently without double-delivering. It includes an authenticated API, an operator dashboard, Prometheus metrics, and a Helm chart, and is covered by 292 tests at 94% coverage.
@@ -164,6 +166,7 @@ Outside of work, Saeem enjoys going out with friends and loves hiking. He is esp
 The best way to reach Saeem is by email at saimmahmood61@gmail.com. He can also be found on LinkedIn and GitHub, and anyone can book a meeting with him through his calendar.
 
 - Email: saimmahmood61@gmail.com
+
 - LinkedIn: https://www.linkedin.com/in/saimmahmood61
 - GitHub: https://www.github.com/saim61
 - Booking a call: https://calendar.app.google/czDkhWsVGq97Xqa47

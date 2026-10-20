@@ -85,6 +85,12 @@ def test_rewrite_falls_back_to_the_question_when_the_api_fails():
     assert generator.rewrite("who is he?") == "who is he?"
 
 
+def test_strict_rewrite_raises_instead_of_falling_back():
+    generator, _, _ = make_generator(fail_rewrite=True)
+    with pytest.raises(errors.APIError):
+        generator.rewrite("who is he?", strict=True)
+
+
 def test_rewrite_falls_back_when_the_model_returns_nothing():
     generator, _, _ = make_generator(rewrite_text="  ")
     assert generator.rewrite("who is he?") == "who is he?"

@@ -18,7 +18,7 @@ import numpy as np
 
 from about_rag.chunker import chunk_file
 from about_rag.config import get_settings
-from about_rag.embedder import get_embedder
+from about_rag.embedder import Embedder, get_embedder
 from about_rag.pgvector_store import PgVectorStore
 from about_rag.store import InMemoryStore, SearchResult, VectorStore
 
@@ -40,9 +40,9 @@ class Retriever:
         return self.store.search(self.embedder.embed_query(question), k)
 
 
-def build_retriever(strategy: str = "structural") -> Retriever:
+def build_retriever(strategy: str = "structural", embedder: Embedder | None = None) -> Retriever:
     """Chunk and embed every file in data/processed into a fresh in-memory store."""
-    embedder = get_embedder()
+    embedder = embedder or get_embedder()
     chunks = [
         chunk
         for path in sorted(get_settings().processed_data_dir.glob("*.md"))
