@@ -21,7 +21,6 @@ def cosine_similarity(query: np.ndarray, matrix: np.ndarray) -> np.ndarray:
     norms = np.linalg.norm(matrix, axis=1) * np.linalg.norm(query)
     if np.any(norms == 0):
         raise ValueError("cosine similarity is undefined for zero vectors")
-    # matrix @ query: n dot products in one call, like a loop over rows summing a[i] * b[i].
     return (matrix @ query) / norms
 
 

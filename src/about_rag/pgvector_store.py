@@ -51,13 +51,11 @@ class PgVectorStore:
 
     @classmethod
     def connect(cls, url: str, dim: int, table: str = "chunks") -> Self:
-        # autocommit: each statement commits on its own; multi-statement writes use
-        # an explicit `with conn.transaction()` block (all or nothing).
         return cls(psycopg.connect(url, autocommit=True, connect_timeout=3), dim, table)
 
     def _create_schema(self, table: str) -> None:
         self.conn.execute("CREATE EXTENSION IF NOT EXISTS vector")
-        register_vector(self.conn)  # lets psycopg send/receive NumPy arrays as `vector`
+        register_vector(self.conn)
         self.conn.execute(
             sql.SQL("""
                 CREATE TABLE IF NOT EXISTS {table} (
@@ -72,8 +70,6 @@ class PgVectorStore:
                 )
             """).format(table=self.table, dim=sql.Literal(self.dim))
         )
-        # HNSW: an approximate nearest-neighbour index. Pointless for 23 rows (Postgres
-        # scans them all anyway), essential for millions; created here to learn from.
         self.conn.execute(
             sql.SQL(
                 "CREATE INDEX IF NOT EXISTS {index} ON {table} "
@@ -123,7 +119,6 @@ class PgVectorStore:
                         ],
                     )
 
-            # Unchanged text keeps its vector, but its position may have shifted.
             if kept:
                 with self.conn.cursor() as cur:
                     cur.executemany(

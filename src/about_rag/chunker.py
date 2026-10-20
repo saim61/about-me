@@ -20,9 +20,7 @@ from pathlib import Path
 
 from about_rag.config import get_settings
 
-# A markdown heading line: 1-6 "#" then a space, e.g. "## Saeem's A Levels".
 HEADING = re.compile(r"^(#{1,6})\s+(.+?)\s*$", re.MULTILINE)
-# A "token" for v2: any run of non-whitespace characters.
 TOKEN = re.compile(r"\S+")
 
 

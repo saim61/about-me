@@ -26,7 +26,6 @@ class Embedder:
     def __init__(self, model_name: str | None = None) -> None:
         settings = get_settings()
         self.model_name = model_name or settings.embedding_model
-        # The first load downloads the model (~67 MB) into the cache dir.
         self._model = TextEmbedding(self.model_name, cache_dir=str(settings.model_cache_dir))
         self.max_tokens: int = self._model.model.tokenizer.truncation["max_length"]
         self.dim: int = self.embed_query("dimension probe").shape[0]

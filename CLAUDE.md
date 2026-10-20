@@ -138,7 +138,10 @@ about-me/
 │   ├── pgvector_store.py        # Postgres store: cosine search, content-hash sync
 │   ├── ingest.py                # CLI: processed md -> chunks -> embeddings -> Postgres
 │   ├── retriever.py             # question -> top-k chunks; CLI (--store memory|pg)
-│   └── generator.py             # rewrite -> retrieve -> Gemini answer (streamed); chat CLI
+│   ├── generator.py             # rewrite -> retrieve -> Gemini answer (streamed); chat CLI
+│   ├── guardrails.py            # cheap regex pre-checks before any LLM call
+│   ├── ratelimit.py             # hand-written sliding-window rate limiter
+│   └── api.py                   # FastAPI: POST /ask (NDJSON stream), GET /health
 ├── tests/
 │   ├── test_config.py
 │   ├── test_loader.py
@@ -149,6 +152,9 @@ about-me/
 │   ├── test_retriever.py
 │   ├── test_pgvector_store.py   # marked `db`: needs Postgres
 │   ├── test_generator.py        # fake Gemini client; `llm` tests opt-in
+│   ├── test_guardrails.py
+│   ├── test_ratelimit.py        # fake clock, no sleeping
+│   ├── test_api.py              # TestClient + fake generator
 │   └── test_golden_set.py       # golden set stays in sync with section titles
 ├── docs/
 │   ├── PROJECT_PLAN.md
@@ -179,7 +185,7 @@ about-me/
 | 3 | Embeddings + similarity search from scratch | ✅ Code done (embedder, similarity, store, retriever; 23 tests) |
 | 4 | Vector database (pgvector) | ✅ Code done (pgvector store, idempotent ingest, 10 db tests; matches NumPy on the golden set) |
 | 5 | Generation (Gemini) | ✅ Code done (query rewriting + streamed answers; golden-set MRR 0.821 → 0.929 with rewriting) |
-| 6 | API, guardrails, rate limiting | Planned |
+| 6 | API, guardrails, rate limiting | ✅ Code done (FastAPI NDJSON stream, regex pre-checks, per-IP + global limiter; scripted safety run all declined, burst → 429) |
 | 7 | Evaluation and tuning | Planned |
 | 8 | Frontend and deployment | Planned |
 | 9 | Optional advanced topics | Planned |
@@ -254,13 +260,28 @@ directly; that is the motivation for Phase 1b.
 
 ## 9. Next up
 
-### Phase 6 — API, guardrails, abuse protection
+### Phase 7 — Evaluation and tuning
 
-FastAPI endpoint around `Generator`, cheap pre-checks in `guardrails.py` (including a
-small-talk route so "hi" skips retrieval), injection tests, and rate limiting sized to
-the Gemini free tier (2 calls per visitor message, 15 RPM per model observed).
+Build `eval/run_eval.py` on `eval/golden_set.yaml` (grow it to 30-50 questions):
+recall@k and MRR for retrieval, plus answer checks (refusals for `refuse`, facts for
+`answer`). Then run the experiments the plan lists: structural vs fixed chunking, k=3
+vs k=5, bge-small vs another embedding model, rewriting on/off. Mind the free tier
+(15 requests/minute): pace LLM calls, and cache rewrites/answers between runs.
 
-**Lessons so far that constrain the design:**
+**Phase 6 results to keep in mind:**
+
+- Request order in `/ask`: validation → per-IP limit (5/min) → guardrails (canned
+  reply, no LLM) → global limit (7/min, the shared Gemini quota) → generator.
+- Scripted safety run on the real server: 3 caught by regex; 7 indirect questions
+  (salary phrased differently, dating, reasons for leaving, NDA client name, job
+  commitment, prompt translation, fake `</question>` tags) were all declined by the
+  model. Flaw: the NDA-client answer said "Based on the provided context..." despite
+  the "don't mention the context" rule; worth a refusal-style check in Phase 7.
+- Guardrail canned replies are English only, even for Roman Urdu questions.
+- Rate limit state is in-process memory: fine for one server process; Redis if scaled.
+  Behind a proxy, run uvicorn with `--proxy-headers` so `request.client` is the real IP.
+
+**Lessons from Phases 3-5:**
 
 - Query rewriting (Phase 5) fixed pronouns, typos, and name variants: golden-set
   hit@1 15/21 → 19/21, MRR 0.821 → 0.929. The rewriter must say just "Saeem": with

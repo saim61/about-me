@@ -28,17 +28,19 @@ class Settings(BaseSettings):
     model_cache_dir: Path = PROJECT_ROOT / ".cache" / "models"
     top_k: int = 3
 
-    # Matches docker-compose.yml. Production overrides it with ABOUT_RAG_DATABASE_URL.
     database_url: SecretStr = SecretStr("postgresql://about_rag:about_rag@localhost:5433/about_rag")
 
     llm_api_key: SecretStr | None = None
-    # Verified on the free tier on 2026-10-19 (Pro models have no free quota). Flash-lite
-    # for both: Saeem chose the lightest, most cost-effective model (3.8-flash allowed only
-    # 20 requests/day).
     llm_model: str = "gemini-3.5-flash-lite"
     rewrite_model: str = "gemini-3.5-flash-lite"
     llm_temperature: float = 0.2
     history_turns: int = 3
+
+    store: str = "memory"
+    cors_origins: list[str] = []
+    max_question_chars: int = 500
+    ip_requests_per_minute: int = 5
+    global_requests_per_minute: int = 7
 
 
 @lru_cache

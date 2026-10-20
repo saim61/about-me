@@ -21,9 +21,6 @@ def words(n: int) -> str:
     return " ".join(f"w{i}" for i in range(n))
 
 
-# --- v1: structural ---
-
-
 def test_structural_splits_at_headings_and_keeps_heading_text():
     chunks = chunk_by_headings(SAMPLE, source="doc.md")
     assert [c.section for c in chunks] == ["Saeem's A Levels", "Saeem's O Levels"]
@@ -59,9 +56,6 @@ def test_structural_without_headings_returns_whole_text():
 
 def test_structural_on_empty_text_returns_nothing():
     assert chunk_by_headings("  \n ", source="doc.md") == []
-
-
-# --- v2: fixed-size ---
 
 
 def test_fixed_chunks_never_exceed_size():
@@ -106,9 +100,6 @@ def test_fixed_rejects_invalid_window(size, overlap):
 
 def test_fixed_on_empty_text_returns_nothing():
     assert chunk_fixed_size("", source="doc.md") == []
-
-
-# --- real processed file ---
 
 
 def test_real_file_structural_chunks_are_non_empty_sections():

@@ -47,9 +47,6 @@ def make_generator(**fake_options) -> tuple[Generator, FakeModels, FakeRetriever
     return Generator(client, retriever, "SYSTEM PROMPT", SETTINGS), models, retriever
 
 
-# --- prompt assembly ---
-
-
 def test_prompt_puts_chunks_in_context_and_question_last():
     prompt = build_prompt("What does he do for fun?", [HOBBIES])
     assert prompt.startswith('<context>\n<chunk section="Saeem\'s Hobbies">')
@@ -65,9 +62,6 @@ def test_prompt_escapes_tags_typed_by_the_visitor():
 
 def test_prompt_keeps_apostrophes_readable():
     assert "Saeem's" in build_prompt("What are Saeem's skills?", [HOBBIES])
-
-
-# --- rewriting ---
 
 
 def test_rewrite_uses_the_small_model_and_returns_its_query():
@@ -94,9 +88,6 @@ def test_rewrite_falls_back_to_the_question_when_the_api_fails():
 def test_rewrite_falls_back_when_the_model_returns_nothing():
     generator, _, _ = make_generator(rewrite_text="  ")
     assert generator.rewrite("who is he?") == "who is he?"
-
-
-# --- prepare + stream ---
 
 
 def test_prepare_retrieves_with_the_rewrite_but_answers_the_original_words():
@@ -136,9 +127,6 @@ def test_answer_joins_the_stream():
 def test_make_client_requires_an_api_key():
     with pytest.raises(RuntimeError, match="ABOUT_RAG_LLM_API_KEY"):
         make_client(Settings(_env_file=None))
-
-
-# --- real Gemini (deselected by default; run with: uv run pytest -m llm) ---
 
 
 @pytest.mark.llm

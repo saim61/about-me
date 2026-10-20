@@ -27,9 +27,6 @@ def test_retrieve_embeds_the_question_and_searches_the_store():
     assert [r.chunk.section for r in results] == ["Hiking"]
 
 
-# --- real model on the real processed file ---
-
-
 @pytest.fixture(scope="module")
 def real_retriever() -> Retriever:
     return build_retriever("structural")

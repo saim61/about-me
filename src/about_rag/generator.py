@@ -62,8 +62,6 @@ def make_client(settings: Settings | None = None) -> genai.Client:
     settings = settings or get_settings()
     if settings.llm_api_key is None:
         raise RuntimeError("set ABOUT_RAG_LLM_API_KEY in .env (see .env.example)")
-    # The free tier often answers 503 ("high demand") or 429 (per-minute limit) for a
-    # moment; retry those with exponential backoff and jitter before giving up.
     retry = types.HttpRetryOptions(
         attempts=4, initial_delay=1.0, max_delay=8.0, http_status_codes=[429, 500, 503, 504]
     )
@@ -119,7 +117,6 @@ class Generator:
                 ),
             )
         except errors.APIError as error:
-            # Retrieval still works on the raw question, just less well.
             log.warning("query rewrite failed (%s); using the question as-is", error)
             return question
         return (response.text or "").strip().strip('"') or question
@@ -150,8 +147,6 @@ class Generator:
             config=types.GenerateContentConfig(
                 system_instruction=self.system_prompt,
                 temperature=self.settings.llm_temperature,
-                # A lookup over a few short sections needs little reasoning; LOW keeps
-                # latency and hidden "thinking" tokens down.
                 thinking_config=types.ThinkingConfig(thinking_level=types.ThinkingLevel.LOW),
             ),
         ):
