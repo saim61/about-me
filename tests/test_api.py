@@ -51,6 +51,12 @@ def test_frontend_is_served_at_the_root():
     assert "<title>Ask about Saeem</title>" in response.text
 
 
+def test_how_it_works_page_and_stylesheet_are_served():
+    client, _ = make_client()
+    assert "How it works" in client.get("/how-it-works.html").text
+    assert client.get("/style.css").status_code == 200
+
+
 def test_ask_streams_sources_then_text_then_done():
     client, _ = make_client()
     response = client.post("/ask", json={"question": "What does he do for fun?"})
@@ -60,7 +66,7 @@ def test_ask_streams_sources_then_text_then_done():
         {
             "type": "sources",
             "search_query": "What does Saeem do for fun?",
-            "sections": ["Saeem's Hobbies"],
+            "chunks": [{"section": "Saeem's Hobbies", "score": 0.8}],
         },
         {"type": "text", "text": "Saeem "},
         {"type": "text", "text": "loves hiking."},

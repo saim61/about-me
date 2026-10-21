@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>How it works · Ask about Saeem</title>
+  <meta name="description" content="How the Ask about Saeem RAG assistant works, and how it was measured.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div>
+        <h1>How it works</h1>
+        <p>A retrieval-augmented generation (RAG) assistant, built step by step to learn how RAG really works, and measured instead of guessed.</p>
+      </div>
+      <nav><a href="./">← Back to chat</a></nav>
+    </header>
+
+    <section>
+      <h2>Once, before anyone asks</h2>
+      <ol class="steps">
+        <li><span class="n">1</span><div><strong>Write it down</strong><span class="d">Everything about Saeem lives in one document, rendered to PDF, because real RAG systems start from PDFs.</span></div></li>
+        <li><span class="n">2</span><div><strong>Extract</strong><span class="d">docling, a layout-aware model, turns the PDF back into markdown with its headings intact.</span></div></li>
+        <li><span class="n">3</span><div><strong>Chunk</strong><span class="d">One chunk per section, so every chunk is one complete idea.</span></div></li>
+        <li><span class="n">4</span><div><strong>Embed</strong><span class="d">A small local model (bge-small-en-v1.5, ONNX) turns each chunk into 384 numbers that capture its meaning.</span></div></li>
+        <li><span class="n">5</span><div><strong>Store</strong><span class="d">Vectors live in memory, or in Postgres with pgvector, synced by content hash so only changed sections are re-embedded.</span></div></li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>Every time you ask</h2>
+      <ol class="steps">
+        <li><span class="n">1</span><div><strong>Guard</strong><span class="d">Rate limits and cheap pre-checks handle greetings, off-limits topics, and injection attempts without spending an LLM call.</span></div></li>
+        <li><span class="n">2</span><div><strong>Rewrite</strong><span class="d">Gemini turns "who is he?" or a typo into a clean search query, and remembers the last few turns for follow-ups.</span></div></li>
+        <li><span class="n">3</span><div><strong>Retrieve</strong><span class="d">Cosine similarity finds the 3 chunks closest in meaning. Click "How I found this" under any answer to see them.</span></div></li>
+        <li><span class="n">4</span><div><strong>Answer</strong><span class="d">Gemini answers only from those chunks, streamed word by word, and says so when it doesn't know.</span></div></li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>Measured, not guessed</h2>
+      <div class="stats">
+        <div class="stat"><b>100%</b><span>questions with the right chunk in the top 3</span></div>
+        <div class="stat"><b>0.94</b><span>mean reciprocal rank</span></div>
+        <div class="stat"><b>49 / 49</b><span>golden-set questions answered or declined correctly</span></div>
+      </div>
+      <p>Every setting was chosen by running a 49-question golden set, including typos, pronouns, Roman Urdu, off-limits questions, and prompt injections.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Setup</th><th>Right chunk first</th><th>In top 3</th><th>MRR</th></tr></thead>
+          <tbody>
+            <tr class="best"><td>Sections + small model + rewriting ✅</td><td>89%</td><td>100%</td><td>0.940</td></tr>
+            <tr><td>Sections + small model</td><td>81%</td><td>100%</td><td>0.889</td></tr>
+            <tr><td>Fixed 100-word chunks + small model</td><td>69%</td><td>92%</td><td>0.797</td></tr>
+            <tr><td>Sections + 3× larger model + rewriting</td><td>67%</td><td>94%</td><td>0.800</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <h2>Things that surprised me</h2>
+      <ul class="lessons">
+        <li><strong>The bigger embedding model lost.</strong> A model three times the size ranked the right chunk first far less often. Measuring beat assuming.</li>
+        <li><strong>"skils" became skiing.</strong> The tokenizer split the typo into <code>ski</code> + <code>##ls</code>, and retrieval returned the hobbies section. Rewriting the question first fixed it.</li>
+        <li><strong>"And before that?" got the wrong job.</strong> The right section wasn't retrieved, so the model guessed an order. A single career-timeline section fixed every ordering question.</li>
+        <li><strong>The AI judge passed a wrong answer.</strong> An LLM grading answers approved one that only sounded right. Reading answers by hand still matters.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Built with</h2>
+      <p>Python, FastAPI, docling, fastembed (ONNX), NumPy, Postgres + pgvector, and Google Gemini. Cosine similarity, chunking, rate limiting, and the evaluation were written by hand first. <a href="https://github.com/saim61/about-me">Read the code →</a></p>
+    </section>
+
+    <footer>Built by Saeem Mehmood Sadiq as a hands-on way to learn RAG.</footer>
+  </main>
+</body>
+</html>

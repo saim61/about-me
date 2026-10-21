@@ -123,7 +123,10 @@ def create_app(generator: Generator | None = None, settings: Settings | None = N
                 {
                     "type": "sources",
                     "search_query": prepared.search_query,
-                    "sections": [r.chunk.section for r in prepared.results],
+                    "chunks": [
+                        {"section": r.chunk.section, "score": round(r.score, 3)}
+                        for r in prepared.results
+                    ],
                 }
             )
             try:

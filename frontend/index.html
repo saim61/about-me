@@ -5,97 +5,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Ask about Saeem</title>
   <meta name="description" content="A small RAG assistant that answers questions about Saeem Mehmood Sadiq.">
-  <style>
-    :root {
-      --bg: #fafaf9;
-      --surface: #ffffff;
-      --text: #1c1917;
-      --muted: #78716c;
-      --border: #e7e5e4;
-      --accent: #0f766e;
-      --accent-text: #ffffff;
-      --user-bubble: #0f766e;
-      --bot-bubble: #f5f5f4;
-    }
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg: #1c1917;
-        --surface: #292524;
-        --text: #f5f5f4;
-        --muted: #a8a29e;
-        --border: #44403c;
-        --accent: #2dd4bf;
-        --accent-text: #134e4a;
-        --user-bubble: #115e59;
-        --bot-bubble: #292524;
-      }
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      background: var(--bg);
-      color: var(--text);
-      font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    }
-    main {
-      max-width: 720px;
-      min-height: 100dvh;
-      margin: 0 auto;
-      padding: 32px 16px 16px;
-      display: flex;
-      flex-direction: column;
-    }
-    header h1 { margin: 0; font-size: 1.6rem; letter-spacing: -0.01em; }
-    header p { margin: 4px 0 0; color: var(--muted); }
-    #chat { flex: 1; padding: 24px 0; display: flex; flex-direction: column; gap: 12px; }
-    .msg { max-width: 85%; padding: 10px 14px; border-radius: 14px; overflow-wrap: anywhere; }
-    .msg p { margin: 0 0 8px; }
-    .msg p:last-child, .msg ul:last-child { margin-bottom: 0; }
-    .msg ul { margin: 0 0 8px; padding-left: 20px; }
-    .msg a { color: inherit; }
-    .user { align-self: flex-end; background: var(--user-bubble); color: #fff; border-bottom-right-radius: 4px; }
-    .bot { align-self: flex-start; background: var(--bot-bubble); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
-    .error { color: #b91c1c; }
-    .typing::after { content: "▍"; animation: blink 1s steps(2) infinite; }
-    @keyframes blink { to { opacity: 0; } }
-    #starters { display: flex; flex-wrap: wrap; gap: 8px; }
-    #starters button {
-      font: inherit; font-size: 0.9rem; cursor: pointer;
-      padding: 6px 12px; border-radius: 999px;
-      background: var(--surface); color: var(--text); border: 1px solid var(--border);
-    }
-    #starters button:hover { border-color: var(--accent); }
-    form { display: flex; gap: 8px; padding-top: 12px; position: sticky; bottom: 0; background: var(--bg); padding-bottom: 8px; }
-    input {
-      flex: 1; min-width: 0; font: inherit; padding: 12px 14px;
-      border-radius: 12px; border: 1px solid var(--border);
-      background: var(--surface); color: var(--text);
-    }
-    input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
-    form button {
-      font: inherit; font-weight: 600; cursor: pointer;
-      padding: 0 18px; border: 0; border-radius: 12px;
-      background: var(--accent); color: var(--accent-text);
-    }
-    form button:disabled { opacity: 0.5; cursor: default; }
-    footer { color: var(--muted); font-size: 0.8rem; text-align: center; padding-top: 8px; }
-    footer a { color: inherit; }
-  </style>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <main>
     <header>
-      <h1>Ask about Saeem</h1>
-      <p>A small RAG assistant that answers questions about Saeem Mehmood Sadiq's work, projects, and background.</p>
+      <div>
+        <h1>Ask about Saeem</h1>
+        <p>A small RAG assistant that answers questions about Saeem Mehmood Sadiq's work, projects, and background.</p>
+      </div>
+      <nav><a href="how-it-works.html">How it works →</a></nav>
     </header>
 
     <section id="chat" aria-live="polite">
-      <div id="starters">
+      <div id="starters" class="chips">
         <button type="button">Who is Saeem?</button>
-        <button type="button">What are his skills?</button>
+        <button type="button">How did he cut RAM from 2 GB to 40 MB?</button>
         <button type="button">Tell me about his projects</button>
-        <button type="button">Where did he study?</button>
-        <button type="button">How can I contact him?</button>
+        <button type="button">What does he do for fun?</button>
+        <button type="button">Saeem ne kahan parhai ki?</button>
       </div>
     </section>
 
@@ -116,8 +44,25 @@
     const form = document.getElementById("ask");
     const input = document.getElementById("question");
     const button = form.querySelector("button");
-    const starters = document.getElementById("starters");
     const history = [];
+    const asked = new Set();
+
+    const FOLLOW_UPS = [
+      [/Hobbies/, ["What is Saeem learning right now?", "Where is Saeem based?"]],
+      [/Technical Skills/, ["Does Saeem know Kubernetes?", "Which databases has he used?"]],
+      [/Code Graphers/, ["How did he cut RAM from 2 GB to 40 MB?", "Where did he work before Code Graphers?"]],
+      [/Dycoders/, ["What did he do at Automatiq?", "Does Saeem know Elixir?"]],
+      [/Automatiq/, ["What did he do at InvoZone?", "What was his first job?"]],
+      [/InvoZone/, ["What was his first job?", "Does Saeem know Elixir?"]],
+      [/Timeline|ILI Digital/, ["What does he do at ILI Digital?", "How many years of experience does he have?"]],
+      [/Projects|Hookline|Podium|fxflow|Olist|Message App|imagehash/,
+        ["What is Hookline?", "Tell me about Podium", "What open-source contribution has he made?"]],
+      [/Education|Levels|Background/, ["Which university did he attend?", "Where did he do his A Levels?"]],
+      [/Learning/, ["Has he built any data engineering projects?", "What is fxflow?"]],
+      [/Contact|Quick Facts/, ["What is Saeem's GitHub?", "Tell me about his projects"]],
+      [/Summary/, ["What are his skills?", "Tell me about his projects"]],
+    ];
+    const DEFAULT_FOLLOW_UPS = ["Who is Saeem?", "Tell me about his projects", "What does he do for fun?"];
 
     function escapeHtml(text) {
       return text.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -156,13 +101,56 @@
       return el;
     }
 
+    function underTheHood(sources, guardrail) {
+      const details = document.createElement("details");
+      details.className = "under";
+      if (guardrail) {
+        details.innerHTML = `<summary>🔍 How I answered this</summary>
+          <p class="query">A cheap pre-check answered this before any LLM call
+          (<code>${escapeHtml(guardrail)}</code>), so no Gemini quota was used.</p>`;
+        return details;
+      }
+      const items = sources.chunks.map((c) => `<li>${escapeHtml(c.section || "untitled")}
+        <div class="bar" title="similarity ${c.score}"><span style="width:${Math.max(0, c.score) * 100}%"></span></div>
+        </li>`).join("");
+      details.innerHTML = `<summary>🔍 How I found this</summary>
+        <p class="query">Searched for: <q>${escapeHtml(sources.search_query)}</q></p>
+        <ol>${items}</ol>`;
+      return details;
+    }
+
+    function followUps(sections) {
+      const picked = [];
+      for (const section of sections) {
+        for (const [pattern, questions] of FOLLOW_UPS) {
+          if (pattern.test(section)) picked.push(...questions);
+        }
+      }
+      const fresh = [...new Set([...picked, ...DEFAULT_FOLLOW_UPS])]
+        .filter((q) => !asked.has(q.toLowerCase()))
+        .slice(0, 3);
+      if (!fresh.length) return null;
+      const box = document.createElement("div");
+      box.className = "chips follow-ups";
+      for (const q of fresh) {
+        const chip = document.createElement("button");
+        chip.type = "button";
+        chip.textContent = q;
+        box.appendChild(chip);
+      }
+      return box;
+    }
+
     async function ask(question) {
-      starters.remove();
+      document.querySelectorAll("#chat .chips").forEach((el) => el.remove());
+      asked.add(question.toLowerCase());
       bubble("user", question);
       const reply = bubble("bot");
       reply.classList.add("typing");
       button.disabled = true;
       let answer = "";
+      let sources = null;
+      let guardrail = null;
 
       try {
         const response = await fetch("/ask", {
@@ -187,16 +175,23 @@
           for (const line of lines) {
             if (!line.trim()) continue;
             const event = JSON.parse(line);
-            if (event.type === "text") {
+            if (event.type === "sources") {
+              sources = event;
+            } else if (event.type === "text") {
               answer += event.text;
               reply.innerHTML = render(answer);
               reply.scrollIntoView({ block: "end" });
+            } else if (event.type === "done") {
+              guardrail = event.guardrail || null;
             } else if (event.type === "error") {
               throw new Error(event.message);
             }
           }
         }
         history.push({ question, answer });
+        if (sources || guardrail) reply.appendChild(underTheHood(sources, guardrail));
+        const chips = followUps(sources ? sources.chunks.map((c) => c.section || "") : []);
+        if (chips) chat.appendChild(chips);
       } catch (error) {
         reply.innerHTML = `<p class="error">${escapeHtml(error.message)}</p>`;
       } finally {
@@ -214,8 +209,11 @@
       ask(question);
     });
 
-    starters.addEventListener("click", (event) => {
-      if (event.target.tagName === "BUTTON" && !button.disabled) ask(event.target.textContent);
+    chat.addEventListener("click", (event) => {
+      const target = event.target;
+      if (target.tagName === "BUTTON" && target.closest(".chips") && !button.disabled) {
+        ask(target.textContent);
+      }
     });
   </script>
 </body>
