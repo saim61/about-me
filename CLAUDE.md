@@ -84,8 +84,11 @@ PDFs; it does not read the markdown authoring file directly (see section 7).
     Postgres (`docker compose up -d`) and are skipped locally without it, but required
     in CI (CI starts the same pgvector image as a service). Fast loop:
     `uv run pytest -m "not model and not db"`.
-- **Postgres:** `docker-compose.yml` runs pgvector on host port **5433** (5432 is taken
-  by a local Postgres on Saeem's machine). Ingest with `uv run python -m about_rag.ingest`.
+- **Docker Compose:** `docker compose up --build` runs the whole thing: `app` (built from
+  the `Dockerfile`, http://localhost:8000, reads `.env` if present) and `db` (pgvector on
+  host port **5433**, since 5432 is taken by a local Postgres on Saeem's machine). The app
+  keeps vectors in memory by default; Postgres is for `about_rag.ingest`, `--store pg`,
+  and the db tests.
 - **Config:** `src/about_rag/config.py` uses `pydantic-settings`.
   - Env vars use the `ABOUT_RAG_` prefix and can come from a gitignored `.env`.
   - Secrets use `SecretStr` so they never show up in logs or `repr`.
@@ -172,7 +175,7 @@ about-me/
 ├── .env.example
 ├── .gitignore
 ├── .python-version
-├── docker-compose.yml           # local Postgres + pgvector (port 5433)
+├── docker-compose.yml           # `docker compose up --build`: app on :8000 + pgvector on :5433
 ├── pyproject.toml
 ├── uv.lock
 ├── CLAUDE.md
@@ -194,7 +197,7 @@ about-me/
 | 5 | Generation (Gemini) | ✅ Code done (query rewriting + streamed answers; golden-set MRR 0.821 → 0.929 with rewriting) |
 | 6 | API, guardrails, rate limiting | ✅ Code done (FastAPI NDJSON stream, regex pre-checks, per-IP + global limiter; scripted safety run all declined, burst → 429) |
 | 7 | Evaluation and tuning | ✅ Done (`eval/run_eval.py`, 49-question golden set, `eval/results.md`: structural + bge-small + rewrite + k=3 → hit@3 100%, MRR 0.940; answers 49/49) |
-| 8 | Frontend and deployment | 🟡 In progress (frontend + Dockerfile done and verified locally; hosting not chosen yet) |
+| 8 | Frontend and deployment | 🟡 In progress (frontend with "How I found this", follow-ups, How it works page; Dockerfile + `docker compose up`; README; knowledge base expanded with Saeem's stories, golden set 58/58. Left: deploy to Hugging Face Spaces) |
 | 9 | Optional advanced topics | Planned |
 
 ### What Phase 1a showed

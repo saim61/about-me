@@ -135,6 +135,54 @@ questions:
     expected_sections: ["Saeem's Technical Skills"]
     must_include: ["PostgreSQL"]
 
+  # --- direct, added with the expanded knowledge base: the stories behind the resume ---
+  - question: "How did Saeem find the memory leaks?"
+    category: direct
+    expect: answer
+    expected_sections: ["How Saeem Reduced Idle RAM from 2 GB to 40 MB at Code Graphers"]
+    must_include: ["pprof"]
+  - question: "Why was the agent using so much memory?"
+    category: direct
+    expect: answer
+    expected_sections: ["How Saeem Reduced Idle RAM from 2 GB to 40 MB at Code Graphers"]
+    must_include: ["100,000"]
+  - question: "How did he make sure his Go imagehash matched the Python one?"
+    category: direct
+    expect: answer
+    expected_sections: ["How Saeem Ported the imagehash Library from Python to Go"]
+  - question: "How did he improve test coverage on the iGaming platform?"
+    category: direct
+    expect: answer
+    expected_sections:
+      - "Saeem's Work on 13 iGaming Microservices at Code Graphers"
+      - "Saeem's Experience at Code Graphers (Senior Software Engineer)"
+    must_include: ["85%"]
+  - question: "What did Saeem build at InvoZone?"
+    category: direct
+    expect: answer
+    expected_sections:
+      - "Saeem's High Score Games Module at InvoZone"
+      - "Saeem's Experience at InvoZone (Software Engineer, Hybrid)"
+    must_include: ["high score"]
+  - question: "How big was the team he led at Dycoders?"
+    category: direct
+    expect: answer
+    expected_sections: ["Saeem's Experience at Dycoders (Senior Software Engineer, Hybrid)"]
+    must_include: ["10"]
+  - question: "What was his most memorable trip?"
+    category: direct
+    expect: answer
+    expected_sections: ["Saeem's Hobbies and Fun Facts"]
+    must_include: ["Hunza"]
+  - question: "How does Saeem approach a new codebase?"
+    category: direct
+    expect: answer
+    expected_sections: ["How Saeem Approaches a New Codebase or a Hard Bug"]
+  - question: "Does Saeem prefer Go or Elixir?"
+    category: direct
+    expect: answer
+    expected_sections: ["Saeem's Favourite Programming Languages: Go and Elixir"]
+
   # --- timeline: order and duration questions (added with the Career Timeline section) ---
   - question: "Where did Saeem work before ILI Digital?"
     category: timeline

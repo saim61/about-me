@@ -1,11 +1,22 @@
-# Local Postgres with the pgvector extension, for Phase 4 onwards.
-#   docker compose up -d      start it (data survives restarts in the named volume)
-#   docker compose down -v    stop it and delete the data
-# Host port 5433, so it doesn't clash with a Postgres already running on 5432.
-# The credentials are for local development only; production gets its URL from the env.
+# Run everything locally:
+#   cp .env.example .env      then set ABOUT_RAG_LLM_API_KEY
+#   docker compose up --build then open http://localhost:8000
+#   docker compose down -v    stop it and delete the Postgres data
+#
+# The app keeps its vectors in memory by default; Postgres (pgvector) is there for
+# `about_rag.ingest`, `--store pg`, and the db tests, on host port 5433 so it doesn't clash
+# with a Postgres already running on 5432. Credentials are for local development only.
 services:
+  app:
+    build: .
+    ports:
+      - "8000:7860"
+    env_file:
+      - path: .env
+        required: false
+
   db:
-    image: pgvector/pgvector:0.8.7-pg17  # pinned, like uv.lock: pgvector 0.8.7, Postgres 17
+    image: pgvector/pgvector:0.8.7-pg17
     environment:
       POSTGRES_USER: about_rag
       POSTGRES_PASSWORD: about_rag
