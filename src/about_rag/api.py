@@ -129,13 +129,21 @@ def create_app(generator: Generator | None = None, settings: Settings | None = N
                     ],
                 }
             )
+            answered = False
             try:
                 for text in generator.stream(prepared, history):
+                    answered = answered or bool(text.strip())
                     yield line({"type": "text", "text": text})
             except errors.APIError as error:
                 log.error("gemini error %s: %s", error.code, error.message)
                 yield line(
                     {"type": "error", "message": "The assistant is busy. Please try again soon."}
+                )
+                return
+            if not answered:
+                log.warning("gemini returned an empty answer")
+                yield line(
+                    {"type": "error", "message": "I couldn't answer that. Please try again."}
                 )
                 return
             yield line({"type": "done"})

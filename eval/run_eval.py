@@ -62,9 +62,16 @@ class Cache:
     def get_or_call(self, key: str, call):
         if key not in self.data:
             self.data[key] = call()
-            self.path.parent.mkdir(parents=True, exist_ok=True)
-            self.path.write_text(json.dumps(self.data, indent=1, ensure_ascii=False), "utf-8")
+            self.save()
         return self.data[key]
+
+    def drop(self, key: str) -> None:
+        self.data.pop(key, None)
+        self.save()
+
+    def save(self) -> None:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.path.write_text(json.dumps(self.data, indent=1, ensure_ascii=False), "utf-8")
 
 
 class Pacer:
@@ -158,6 +165,9 @@ class Evaluator:
 
         key = Cache.key(self.settings.llm_model, self.generator.system_prompt, prompt)
         text = self.answers.get_or_call(key, generate)
+        if not text.strip():
+            self.answers.drop(key)
+            return {"via": "llm", "text": text, "pass": False, "note": "empty answer (rerun)"}
 
         def judge() -> dict:
             self.pacer.wait()

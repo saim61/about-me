@@ -99,6 +99,16 @@ def test_gemini_failure_mid_stream_becomes_an_error_event():
     assert [e["type"] for e in events(response)] == ["sources", "text", "error"]
 
 
+def test_empty_answer_from_gemini_becomes_an_error_event():
+    class EmptyGenerator(FakeGenerator):
+        def stream(self, prepared, history=()):
+            yield ""
+
+    client, _ = make_client(EmptyGenerator())
+    response = client.post("/ask", json={"question": "fun?"})
+    assert [e["type"] for e in events(response)] == ["sources", "text", "error"]
+
+
 def test_burst_from_one_ip_is_rate_limited():
     client, _ = make_client(ip_requests_per_minute=3, global_requests_per_minute=100)
     codes = [client.post("/ask", json={"question": "fun?"}).status_code for _ in range(5)]
